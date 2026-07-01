@@ -5,6 +5,7 @@ enum LLMError: LocalizedError {
     case networkError(String)
     case apiError(String)
     case noContent
+    case localModelUnavailable(String)
 
     var errorDescription: String? {
         switch self {
@@ -16,6 +17,21 @@ enum LLMError: LocalizedError {
             return "Fehler von OpenAI: \(msg)"
         case .noContent:
             return "Keine Antwort erhalten. Bitte nochmal versuchen."
+        case .localModelUnavailable(let msg):
+            return "Lokales Sprachmodell nicht verfügbar: \(msg)"
+        }
+    }
+}
+
+/// Bestimmt, ob OpenAI (Cloud) oder Apple Intelligence (lokal) genutzt wird.
+enum LLMBackend: String, Codable, CaseIterable {
+    case remote   // OpenAI API
+    case local    // Apple On-Device LLM (Foundation Models)
+
+    var displayName: String {
+        switch self {
+        case .remote: return "OpenAI (Cloud)"
+        case .local: return "Apple Intelligence (lokal)"
         }
     }
 }
@@ -71,40 +87,69 @@ enum LLMService {
     static func improve(
         text: String,
         settings: TextImprovementSettings,
-        model: RewriteModel = .fastEdit
+        model: RewriteModel = .fastEdit,
+        backend: LLMBackend = .remote
     ) async throws -> String {
-        try await complete(
-            text: text,
-            systemPrompt: buildSystemPrompt(settings: settings),
-            model: model,
-            temperature: 0.3
-        )
+        let systemPrompt = buildSystemPrompt(settings: settings)
+        switch backend {
+        case .remote:
+            return try await complete(
+                text: text,
+                systemPrompt: systemPrompt,
+                model: model,
+                temperature: 0.3
+            )
+        case .local:
+            return try await LocalLLMService.improve(
+                text: text,
+                systemPrompt: systemPrompt
+            )
+        }
     }
 
     static func dampfAblassen(
         text: String,
         systemPrompt: String,
-        model: RewriteModel = .rageMode
+        model: RewriteModel = .rageMode,
+        backend: LLMBackend = .remote
     ) async throws -> String {
-        try await complete(
-            text: text,
-            systemPrompt: systemPrompt,
-            model: model,
-            temperature: 0.4
-        )
+        switch backend {
+        case .remote:
+            return try await complete(
+                text: text,
+                systemPrompt: systemPrompt,
+                model: model,
+                temperature: 0.4
+            )
+        case .local:
+            return try await LocalLLMService.dampfAblassen(
+                text: text,
+                systemPrompt: systemPrompt
+            )
+        }
     }
 
     static func addEmojis(
         text: String,
         settings: EmojiTextSettings,
-        model: RewriteModel = .fastEdit
+        model: RewriteModel = .fastEdit,
+        backend: LLMBackend = .remote
     ) async throws -> String {
-        try await complete(
-            text: text,
-            systemPrompt: buildEmojiSystemPrompt(density: settings.emojiDensity),
-            model: model,
-            temperature: 0.3
-        )
+        let systemPrompt = buildEmojiSystemPrompt(density: settings.emojiDensity)
+        switch backend {
+        case .remote:
+            return try await complete(
+                text: text,
+                systemPrompt: systemPrompt,
+                model: model,
+                temperature: 0.3
+            )
+        case .local:
+            return try await LocalLLMService.addEmojis(
+                text: text,
+                systemPrompt: systemPrompt
+            )
+        }
     }
 
     private static func complete(

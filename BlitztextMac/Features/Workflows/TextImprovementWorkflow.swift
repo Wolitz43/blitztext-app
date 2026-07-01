@@ -15,11 +15,13 @@ final class TextImprovementWorkflow: Workflow {
     private let recorder = AudioRecorder()
     private let settings: TextImprovementSettings
     private let language: String
+    private let llmBackend: LLMBackend
     private var processingTask: Task<Void, Never>?
 
-    init(settings: TextImprovementSettings, language: String = "de") {
+    init(settings: TextImprovementSettings, language: String = "de", llmBackend: LLMBackend = .remote) {
         self.settings = settings
         self.language = language
+        self.llmBackend = llmBackend
     }
 
     // MARK: - Recording State
@@ -99,7 +101,8 @@ final class TextImprovementWorkflow: Workflow {
 
                 let improved = try await LLMService.improve(
                     text: cleanedRawText,
-                    settings: settings
+                    settings: settings,
+                    backend: llmBackend
                 )
 
                 let cleanedImproved = TranscriptionQualityService.cleanedTranscript(improved)

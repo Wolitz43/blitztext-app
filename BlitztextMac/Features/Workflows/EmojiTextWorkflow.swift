@@ -16,12 +16,14 @@ final class EmojiTextWorkflow: Workflow {
     private let settings: EmojiTextSettings
     private let customTerms: [String]
     private let language: String
+    private let llmBackend: LLMBackend
     private var processingTask: Task<Void, Never>?
 
-    init(settings: EmojiTextSettings, customTerms: [String] = [], language: String = "de") {
+    init(settings: EmojiTextSettings, customTerms: [String] = [], language: String = "de", llmBackend: LLMBackend = .remote) {
         self.settings = settings
         self.customTerms = customTerms
         self.language = language
+        self.llmBackend = llmBackend
     }
 
     // MARK: - Recording State
@@ -101,7 +103,8 @@ final class EmojiTextWorkflow: Workflow {
 
                 let result = try await LLMService.addEmojis(
                     text: cleanedRawText,
-                    settings: settings
+                    settings: settings,
+                    backend: llmBackend
                 )
                 let cleanedResult = TranscriptionQualityService.cleanedTranscript(result)
                 guard cleanedResult != "KEINE_AUFNAHME_ERKANNT" else {

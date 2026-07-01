@@ -120,7 +120,10 @@ final class AppState {
             return "Nur lokal. Kein Server."
         case .textImprover, .dampfAblassen, .emojiText:
             if appSettings.secureLocalModeEnabled {
-                return "Im lokalen Modus pausiert."
+                if LocalLLMService.isAvailable {
+                    return "Lokal: Apple Intelligence."
+                }
+                return "Apple Intelligence nicht verfügbar."
             }
             return type.subtitle
         }
@@ -195,7 +198,8 @@ final class AppState {
         case .textImprover:
             let workflow = TextImprovementWorkflow(
                 settings: textImprovementSettings,
-                language: transcriptionSettings.language
+                language: transcriptionSettings.language,
+                llmBackend: resolvedLLMBackend
             )
             configureWorkflowHandlers(workflow)
             activeWorkflow = workflow
@@ -205,7 +209,8 @@ final class AppState {
             let workflow = DampfAblassenWorkflow(
                 settings: dampfAblassenSettings,
                 customTerms: textImprovementSettings.customTerms,
-                language: transcriptionSettings.language
+                language: transcriptionSettings.language,
+                llmBackend: resolvedLLMBackend
             )
             configureWorkflowHandlers(workflow)
             activeWorkflow = workflow
@@ -215,7 +220,8 @@ final class AppState {
             let workflow = EmojiTextWorkflow(
                 settings: emojiTextSettings,
                 customTerms: textImprovementSettings.customTerms,
-                language: transcriptionSettings.language
+                language: transcriptionSettings.language,
+                llmBackend: resolvedLLMBackend
             )
             configureWorkflowHandlers(workflow)
             activeWorkflow = workflow
@@ -234,8 +240,32 @@ final class AppState {
                 ? selectedLocalModelIsInstalled
                 : KeychainService.isConfigured
         case .textImprover, .dampfAblassen, .emojiText:
-            return !appSettings.secureLocalModeEnabled && KeychainService.isConfigured
+            // Verfügbar wenn: OpenAI konfiguriert ODER lokales Apple-LLM bereit
+            if appSettings.secureLocalModeEnabled {
+                return LocalLLMService.isAvailable
+            }
+            return KeychainService.isConfigured
         }
+    }
+
+    /// Bestimmt das LLM-Backend basierend auf dem aktuellen Modus.
+    /// Im Secure Local Mode wird Apple Intelligence genutzt (falls verfügbar),
+    /// ansonsten OpenAI.
+    var resolvedLLMBackend: LLMBackend {
+        if appSettings.secureLocalModeEnabled && LocalLLMService.isAvailable {
+            return .local
+        }
+        return .remote
+    }
+
+    /// Ob Apple Intelligence auf diesem Mac verfügbar ist.
+    var isLocalLLMAvailable: Bool {
+        LocalLLMService.isAvailable
+    }
+
+    /// Beschreibung des aktuellen Apple-Intelligence-Status.
+    var localLLMStatusDescription: String {
+        LocalLLMService.availabilityDescription()
     }
 
     func stopCurrentWorkflow() {

@@ -16,12 +16,14 @@ final class DampfAblassenWorkflow: Workflow {
     private let settings: DampfAblassenSettings
     private let customTerms: [String]
     private let language: String
+    private let llmBackend: LLMBackend
     private var processingTask: Task<Void, Never>?
 
-    init(settings: DampfAblassenSettings, customTerms: [String] = [], language: String = "de") {
+    init(settings: DampfAblassenSettings, customTerms: [String] = [], language: String = "de", llmBackend: LLMBackend = .remote) {
         self.settings = settings
         self.customTerms = customTerms
         self.language = language
+        self.llmBackend = llmBackend
     }
 
     // MARK: - Recording State
@@ -101,7 +103,8 @@ final class DampfAblassenWorkflow: Workflow {
 
                 let answer = try await LLMService.dampfAblassen(
                     text: cleanedRawText,
-                    systemPrompt: settings.systemPrompt
+                    systemPrompt: settings.systemPrompt,
+                    backend: llmBackend
                 )
                 let cleanedAnswer = TranscriptionQualityService.cleanedTranscript(answer)
                 guard cleanedAnswer != "KEINE_AUFNAHME_ERKANNT" else {
