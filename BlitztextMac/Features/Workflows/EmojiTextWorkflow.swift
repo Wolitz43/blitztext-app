@@ -17,13 +17,24 @@ final class EmojiTextWorkflow: Workflow {
     private let customTerms: [String]
     private let language: String
     private let llmBackend: LLMBackend
+    private let transcriptionBackend: TranscriptionBackend
+    private let localModelName: String
     private var processingTask: Task<Void, Never>?
 
-    init(settings: EmojiTextSettings, customTerms: [String] = [], language: String = "de", llmBackend: LLMBackend = .remote) {
+    init(
+        settings: EmojiTextSettings,
+        customTerms: [String] = [],
+        language: String = "de",
+        llmBackend: LLMBackend = .remote,
+        transcriptionBackend: TranscriptionBackend = .remote,
+        localModelName: String = LocalTranscriptionService.recommendedFastModelName
+    ) {
         self.settings = settings
         self.customTerms = customTerms
         self.language = language
         self.llmBackend = llmBackend
+        self.transcriptionBackend = transcriptionBackend
+        self.localModelName = localModelName
     }
 
     // MARK: - Recording State
@@ -84,12 +95,22 @@ final class EmojiTextWorkflow: Workflow {
             }
 
             do {
-                // Phase 1: Whisper transcription
-                let rawText = try await TranscriptionService.transcribe(
-                    audioURL: url,
-                    customTerms: vocabularyHints,
-                    language: language
-                )
+                // Phase 1: Transkription (lokal oder remote)
+                let rawText: String
+                switch transcriptionBackend {
+                case .local:
+                    rawText = try await LocalTranscriptionService.shared.transcribe(
+                        audioURL: url,
+                        language: language,
+                        modelName: localModelName
+                    )
+                case .remote:
+                    rawText = try await TranscriptionService.transcribe(
+                        audioURL: url,
+                        customTerms: vocabularyHints,
+                        language: language
+                    )
+                }
                 let cleanedRawText = TranscriptionQualityService.cleanedTranscript(rawText)
                 guard !TranscriptionQualityService.isLikelyArtifact(cleanedRawText, recordingDuration: recordingDuration) else {
                     phase = .error("Keine Aufnahme erkannt.")

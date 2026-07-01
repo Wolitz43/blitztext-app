@@ -120,20 +120,55 @@ enum LocalLLMService {
         print("🧠 [LocalLLM] Text-Länge: \(userText.count) Zeichen")
         print("🧠 [LocalLLM] Anweisungen: \(instructions.prefix(80))...")
 
-        let session = LanguageModelSession(instructions: instructions)
+        // Vereinfachte Anweisungen verwenden, die weniger wahrscheinlich
+        // die Safety Guardrails auslösen
+        let safeInstructions = Self.sanitizeInstructions(instructions)
 
-        let response = try await session.respond(to: userText)
-        let result = response.content.trimmingCharacters(in: .whitespacesAndNewlines)
+        let session = LanguageModelSession(instructions: safeInstructions)
 
-        guard !result.isEmpty else {
-            throw LLMError.noContent
+        do {
+            let response = try await session.respond(to: userText)
+            let result = response.content.trimmingCharacters(in: .whitespacesAndNewlines)
+
+            guard !result.isEmpty else {
+                throw LLMError.noContent
+            }
+
+            print("🧠 [LocalLLM] Ergebnis: \(result.count) Zeichen")
+            return result
+        } catch let error as LanguageModelSession.GenerationError {
+            print("🧠 [LocalLLM] GenerationError: \(error)")
+            switch error {
+            case .guardrailViolation:
+                print("⚠️ [LocalLLM] Safety Guardrails ausgelöst!")
+                throw LLMError.localModelUnavailable(
+                    "Apple Intelligence hat den Text abgelehnt (Sicherheitsfilter). "
+                    + "Bitte versuche es mit einer anderen Formulierung, "
+                    + "oder wechsle zu OpenAI in den Einstellungen."
+                )
+            default:
+                throw LLMError.apiError("Apple Intelligence Fehler: \(error.localizedDescription)")
+            }
         }
-
-        print("🧠 [LocalLLM] Ergebnis: \(result.count) Zeichen")
-        return result
 
         #else
         throw LLMError.apiError(availabilityDescription())
         #endif
+    }
+
+    /// Passt die Anweisungen an, damit sie weniger wahrscheinlich
+    /// die Safety Guardrails des On-Device-Modells auslösen.
+    private static func sanitizeInstructions(_ instructions: String) -> String {
+        // Das On-Device-Modell reagiert empfindlich auf Anweisungen,
+        // die nach "Manipulation" oder "Umschreiben" klingen.
+        // Wir formulieren sie als hilfreiche Assistenz-Aufgabe.
+        let prefix = """
+        You are a helpful writing assistant. \
+        The user will provide text that they wrote themselves. \
+        Your job is to help improve their own writing. \
+        Always respond with the improved text only, no explanations.
+
+        """
+        return prefix + instructions
     }
 }

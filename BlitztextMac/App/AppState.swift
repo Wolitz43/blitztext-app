@@ -60,7 +60,9 @@ final class AppState {
 
     // Computed - check on every access to ensure API key changes are detected
     var isConfigured: Bool {
-        KeychainService.isConfigured || !LocalTranscriptionService.installedModels().isEmpty
+        KeychainService.isConfigured
+            || !LocalTranscriptionService.installedModels().isEmpty
+            || LocalLLMService.isAvailable
     }
     
     /// Force UI to refresh workflow availability after keychain changes
@@ -199,7 +201,9 @@ final class AppState {
             let workflow = TextImprovementWorkflow(
                 settings: textImprovementSettings,
                 language: transcriptionSettings.language,
-                llmBackend: resolvedLLMBackend
+                llmBackend: resolvedLLMBackend,
+                transcriptionBackend: appSettings.secureLocalModeEnabled ? .local : .remote,
+                localModelName: selectedLocalModelName
             )
             configureWorkflowHandlers(workflow)
             activeWorkflow = workflow
@@ -210,7 +214,9 @@ final class AppState {
                 settings: dampfAblassenSettings,
                 customTerms: textImprovementSettings.customTerms,
                 language: transcriptionSettings.language,
-                llmBackend: resolvedLLMBackend
+                llmBackend: resolvedLLMBackend,
+                transcriptionBackend: appSettings.secureLocalModeEnabled ? .local : .remote,
+                localModelName: selectedLocalModelName
             )
             configureWorkflowHandlers(workflow)
             activeWorkflow = workflow
@@ -221,7 +227,9 @@ final class AppState {
                 settings: emojiTextSettings,
                 customTerms: textImprovementSettings.customTerms,
                 language: transcriptionSettings.language,
-                llmBackend: resolvedLLMBackend
+                llmBackend: resolvedLLMBackend,
+                transcriptionBackend: appSettings.secureLocalModeEnabled ? .local : .remote,
+                localModelName: selectedLocalModelName
             )
             configureWorkflowHandlers(workflow)
             activeWorkflow = workflow
