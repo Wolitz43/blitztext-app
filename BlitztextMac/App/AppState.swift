@@ -58,9 +58,16 @@ final class AppState {
     // Hotkeys
     let hotkeyService = HotkeyService()
 
-    // Computed
+    // Computed - check on every access to ensure API key changes are detected
     var isConfigured: Bool {
         KeychainService.isConfigured || !LocalTranscriptionService.installedModels().isEmpty
+    }
+    
+    /// Force UI to refresh workflow availability after keychain changes
+    func refreshConfigurationState() {
+        // Trigger a dummy settings update to force Observable to notify views
+        let current = appSettings
+        appSettings = current
     }
     var shouldShowOnboarding: Bool {
         !isConfigured && !appSettings.hasSeenOnboarding
@@ -298,6 +305,10 @@ final class AppState {
     /// Copies the text, restores focus when needed, then simulates Cmd+V.
     /// The text intentionally remains on the clipboard as a fallback if paste is blocked.
     private func pasteAtCursor(_ text: String, target: PasteTarget? = nil) {
+        print("📋 [Paste] Starting paste operation...")
+        print("📋 [Paste] Text length: \(text.count) characters")
+        print("📋 [Paste] Target: \(target != nil ? "✅ Set" : "❌ nil")")
+        
         writeSensitiveTextToPasteboard(text)
 
         if isPopoverShown {
@@ -306,10 +317,22 @@ final class AppState {
 
         let trusted = AccessibilityPermissionService.isTrusted(promptIfNeeded: true)
         accessibilityPermissionGranted = trusted
+        print("📋 [Paste] Accessibility trusted: \(trusted ? "✅" : "❌")")
+        
+        #if DEBUG
+        // In debug builds, try to paste even if not officially trusted
+        // This works if the permission was granted to ANY Blitztext version
+        if !trusted {
+            print("⚠️ [Paste] Not officially trusted, but attempting paste anyway (DEBUG mode)")
+            print("💡 [Paste] If paste fails, grant permission in System Settings")
+        }
+        #else
         guard trusted else {
+            print("❌ [Paste] FAILED: Accessibility permission not granted!")
             menuBarStatus = .error(activeWorkflow?.type)
             return
         }
+        #endif
 
         attemptPasteTrusted(
             target: target,
@@ -328,6 +351,16 @@ final class AppState {
 
     func prepareForPopoverPresentation() {
         lastPopoverPasteTarget = captureCurrentFrontmostApp()
+        
+        if let target = lastPopoverPasteTarget {
+            print("🎯 [Target] Captured paste target:")
+            print("🎯 [Target]   App: \(target.application.localizedName ?? "Unknown")")
+            print("🎯 [Target]   Bundle ID: \(target.bundleIdentifier ?? "nil")")
+            print("🎯 [Target]   PID: \(target.processIdentifier)")
+        } else {
+            print("⚠️ [Target] No paste target captured!")
+        }
+        
         if let activeWorkflow, activeWorkflow.phase.isActive {
             page = .workflow
         } else if shouldShowOnboarding {
@@ -539,19 +572,29 @@ final class AppState {
         attemptsRemaining: Int
     ) {
         let frontmostPid = NSWorkspace.shared.frontmostApplication?.processIdentifier
+        
+        print("📋 [Paste] Attempt \(Self.pasteRetryInitialAttempts - attemptsRemaining + 1)/\(Self.pasteRetryInitialAttempts)")
+        print("📋 [Paste] Frontmost PID: \(frontmostPid ?? -1)")
+        print("📋 [Paste] Target PID: \(target?.processIdentifier ?? -1)")
 
         if let target {
             if frontmostPid == target.processIdentifier {
+                print("✅ [Paste] Target is frontmost - performing paste!")
                 performPaste()
                 return
             }
 
+            print("🔄 [Paste] Activating target app...")
             target.application.activate(options: [])
         } else {
+            print("❌ [Paste] FAILED: No target application!")
+            print("💡 [Paste] Tip: Text is in clipboard - try Cmd+V manually")
             return
         }
 
         guard attemptsRemaining > 0 else {
+            print("❌ [Paste] FAILED: Timeout after all attempts")
+            print("💡 [Paste] Text is in clipboard - try Cmd+V manually")
             return
         }
 
@@ -574,21 +617,45 @@ final class AppState {
     }
 
     private func performPaste() {
+        print("✅ [Paste] Simulating Cmd+V...")
+        print("✅ [Paste] AXIsProcessTrusted: \(AXIsProcessTrusted())")
+        print("✅ [Paste] App path: \(Bundle.main.bundlePath)")
+        print("✅ [Paste] Bundle ID: \(Bundle.main.bundleIdentifier ?? "nil")")
+
         let source = CGEventSource(stateID: .hidSystemState)
-        let keyDown = CGEvent(keyboardEventSource: source, virtualKey: 0x09, keyDown: true)
-        keyDown?.flags = .maskCommand
-        let keyUp = CGEvent(keyboardEventSource: source, virtualKey: 0x09, keyDown: false)
-        keyUp?.flags = .maskCommand
-        keyDown?.post(tap: .cghidEventTap)
-        keyUp?.post(tap: .cghidEventTap)
+
+        guard let keyDown = CGEvent(keyboardEventSource: source, virtualKey: 0x09, keyDown: true),
+              let keyUp = CGEvent(keyboardEventSource: source, virtualKey: 0x09, keyDown: false) else {
+            print("❌ [Paste] FAILED: Could not create CGEvent!")
+            print("❌ [Paste] This usually means Input Monitoring permission is missing.")
+            print("❌ [Paste] Go to: System Settings → Privacy & Security → Input Monitoring")
+            print("❌ [Paste] Add and enable: \(AccessibilityPermissionService.displayAppName)")
+            return
+        }
+
+        keyDown.flags = .maskCommand
+        keyUp.flags = .maskCommand
+        keyDown.post(tap: .cghidEventTap)
+        keyUp.post(tap: .cghidEventTap)
+        print("✅ [Paste] Cmd+V sent!")
     }
 
     private func captureCurrentFrontmostApp() -> PasteTarget? {
-        guard let app = NSWorkspace.shared.frontmostApplication else { return nil }
+        guard let app = NSWorkspace.shared.frontmostApplication else {
+            print("⚠️ [Capture] No frontmost application found!")
+            return nil
+        }
 
         let ownPid = NSRunningApplication.current.processIdentifier
-        guard app.processIdentifier != ownPid else { return nil }
+        print("🔍 [Capture] Current process PID: \(ownPid)")
+        print("🔍 [Capture] Frontmost app: \(app.localizedName ?? "Unknown") (PID: \(app.processIdentifier))")
+        
+        guard app.processIdentifier != ownPid else {
+            print("⚠️ [Capture] Frontmost is ourselves - not capturing")
+            return nil
+        }
 
+        print("✅ [Capture] Successfully captured target")
         return PasteTarget(
             bundleIdentifier: app.bundleIdentifier,
             processIdentifier: app.processIdentifier,

@@ -117,6 +117,10 @@ enum LLMService {
             throw LLMError.notConfigured
         }
 
+        // Debug: Log API key format (first 7 chars only for security)
+        let keyPrefix = String(apiKey.prefix(7))
+        print("🔑 [LLMService] Using API key starting with: \(keyPrefix)... (length: \(apiKey.count))")
+
         let payload = OpenAIChatRequest(
             model: model.rawValue,
             messages: [
@@ -133,14 +137,39 @@ enum LLMService {
         request.timeoutInterval = 45
         request.httpBody = try JSONEncoder().encode(payload)
 
+        print("🌐 [LLMService] Sending request to OpenAI API...")
+        print("📦 [LLMService] Model: \(model.rawValue), Text length: \(text.count) chars")
+
         let (data, response) = try await session.data(for: request)
 
         guard let httpResponse = response as? HTTPURLResponse else {
+            print("❌ [LLMService] Invalid HTTP response")
             throw LLMError.networkError("Keine gültige Antwort")
         }
 
+        print("📡 [LLMService] Response status: \(httpResponse.statusCode)")
+
         guard httpResponse.statusCode == 200 else {
-            throw LLMError.apiError(openAIErrorMessage(from: data) ?? "Status \(httpResponse.statusCode)")
+            let errorMessage = openAIErrorMessage(from: data) ?? "Status \(httpResponse.statusCode)"
+            
+            // Debug: Log full error response for debugging
+            if let responseString = String(data: data, encoding: .utf8) {
+                print("❌ [LLMService] OpenAI error response: \(responseString)")
+            }
+            
+            // Special handling for common errors
+            if httpResponse.statusCode == 401 {
+                print("🔐 [LLMService] Authentication failed - API key may be invalid")
+                throw LLMError.apiError("API-Key ungültig oder abgelaufen. Bitte prüfe deinen OpenAI API Key.")
+            } else if httpResponse.statusCode == 429 {
+                print("⏱️ [LLMService] Rate limit exceeded")
+                throw LLMError.apiError("Zu viele Anfragen. Bitte warte einen Moment.")
+            } else if httpResponse.statusCode == 402 {
+                print("💳 [LLMService] Insufficient credits")
+                throw LLMError.apiError("Keine Credits mehr. Bitte Credits im OpenAI Dashboard aufladen.")
+            }
+            
+            throw LLMError.apiError(errorMessage)
         }
 
         let result = try JSONDecoder().decode(OpenAIChatResponse.self, from: data)

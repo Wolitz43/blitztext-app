@@ -56,7 +56,8 @@ private struct SectionLabel: View {
 // MARK: - Access Settings (Tab 1: Zugang)
 
 struct AccessSettingsView: View {
-    private static let openAIAPIKeyPattern = #"^sk-[A-Za-z0-9_-]{20,}$"#
+    // Updated pattern to support both old (sk-) and new (sk-proj-) format API keys
+    private static let openAIAPIKeyPattern = #"^sk-(proj-)?[A-Za-z0-9_-]{20,}$"#
 
     @Bindable var appState: AppState
 
@@ -221,6 +222,18 @@ struct AccessSettingsView: View {
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
 
+                // Debug build marker
+                HStack(spacing: 6) {
+                    Image(systemName: "hammer.fill")
+                        .font(.system(size: 10))
+                        .foregroundStyle(.green)
+                    Text("DEBUG BUILD v2.0-FIXED")
+                        .font(.system(size: 10, weight: .bold, design: .monospaced))
+                        .foregroundStyle(.green)
+                }
+                .padding(6)
+                .background(Color.green.opacity(0.1), in: RoundedRectangle(cornerRadius: 4))
+
                 if !currentInstallLocation.isCanonicalInstall {
                     Text("Hotkeys und Login-Start laufen am stabilsten, wenn Blitztext aus /Applications gestartet wird.")
                         .font(.system(size: 10.5))
@@ -382,12 +395,34 @@ struct AccessSettingsView: View {
                 saveErrorText = "Bitte trage deinen OpenAI API Key ein."
                 return
             }
+            
+            // Validate API key format
+            guard trimmedAPIKey.hasPrefix("sk-") || trimmedAPIKey.hasPrefix("sk-proj-") else {
+                saveErrorText = "Der API Key muss mit 'sk-' oder 'sk-proj-' beginnen."
+                return
+            }
+            
+            guard trimmedAPIKey.count >= 20 else {
+                saveErrorText = "Der API Key scheint zu kurz zu sein (mindestens 20 Zeichen)."
+                return
+            }
+            
+            // Check for common paste errors (multiple lines, extra text)
+            if trimmedAPIKey.contains("\n") || trimmedAPIKey.contains("\r") {
+                saveErrorText = "Der API Key enthält Zeilenumbrüche. Bitte nur den Key einfügen."
+                return
+            }
+            
+            print("💾 [Settings] Saving API key: \(String(trimmedAPIKey.prefix(7)))... (length: \(trimmedAPIKey.count))")
+            
             do {
                 try KeychainService.save(key: .openAIAPIKey, value: trimmedAPIKey)
                 openAIAPIKey = ""
                 editingAPIKey = false
+                print("✅ [Settings] API key saved successfully")
             } catch {
-                saveErrorText = "OpenAI API Key konnte nicht gespeichert werden."
+                saveErrorText = "OpenAI API Key konnte nicht gespeichert werden: \(error.localizedDescription)"
+                print("❌ [Settings] Failed to save API key: \(error)")
                 return
             }
         }
@@ -397,6 +432,9 @@ struct AccessSettingsView: View {
             saveErrorText = "OpenAI API Key wurde nicht persistent gespeichert. Bitte App neu starten und erneut versuchen."
             return
         }
+
+        // Force AppState to re-evaluate isConfigured and workflow availability
+        appState.refreshConfigurationState()
 
         withAnimation(.easeInOut(duration: 0.2)) { saved = true }
         DispatchQueue.main.asyncAfter(deadline: .now() + 2) {

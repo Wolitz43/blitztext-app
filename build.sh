@@ -86,7 +86,7 @@ ensure_xcodebuild_available() {
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$SCRIPT_DIR/BlitztextMac"
 PROJECT_FILE="$PROJECT_DIR/BlitztextMac.xcodeproj"
-DERIVED_DATA_PATH="$SCRIPT_DIR/.derivedData-blitztextmac-build"
+DERIVED_DATA_PATH="/tmp/blitztext-build"
 cd "$PROJECT_DIR"
 
 ensure_xcodebuild_available

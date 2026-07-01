@@ -625,17 +625,36 @@ struct MenuBarView: View {
     }
 
     private var appFooter: some View {
-        HStack {
-            Spacer()
-            Button("Beenden") {
-                NSApplication.shared.terminate(nil)
+        VStack(spacing: 0) {
+            Divider()
+            
+            HStack(spacing: 12) {
+                // Quit button - now more prominent
+                Button {
+                    NSApplication.shared.terminate(nil)
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: "power")
+                            .font(.system(size: 11, weight: .medium))
+                        Text("Beenden")
+                            .font(.system(size: 11, weight: .medium))
+                    }
+                }
+                .buttonStyle(SubtleButtonStyle())
+                .foregroundStyle(.secondary)
+                .help("Blitztext komplett beenden")
+                
+                Spacer()
+                
+                // Version info
+                Text("v2.0-FIXED")
+                    .font(.system(size: 9, weight: .medium, design: .monospaced))
+                    .foregroundStyle(.quaternary)
             }
-            .font(.system(size: 10, weight: .medium))
-            .foregroundStyle(.quaternary)
-            .buttonStyle(SubtleButtonStyle())
-            Spacer()
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
+            .background(Color(nsColor: .controlBackgroundColor).opacity(0.3))
         }
-        .padding(.vertical, 8)
     }
 
     private func workflowIconColor(_ type: WorkflowType) -> Color {

@@ -69,23 +69,32 @@ final class MenuBarStatusController {
     }
 
     private func tooltip(for status: MenuBarStatus) -> String {
+        #if DEBUG
+        let prefix = "Blitztext Dev"
+        let bundleId = Bundle.main.bundleIdentifier ?? "unknown"
+        let suffix = " (\(bundleId))"
+        #else
+        let prefix = "Blitztext"
+        let suffix = ""
+        #endif
+        
         switch status {
         case .idle:
-            return "Blitztext ist bereit"
+            return "\(prefix) ist bereit\(suffix)"
         case .recording(let type):
-            return "\(type.displayName): Aufnahme läuft"
+            return "\(prefix): \(type.displayName) - Aufnahme läuft"
         case .processing(let type):
-            return "\(type.displayName): Verarbeitung läuft"
+            return "\(prefix): \(type.displayName) - Verarbeitung läuft"
         case .success(let type):
             if let type {
-                return "\(type.displayName): Fertig"
+                return "\(prefix): \(type.displayName) - Fertig"
             }
-            return "Blitztext: Fertig"
+            return "\(prefix): Fertig"
         case .error(let type):
             if let type {
-                return "\(type.displayName): Fehler"
+                return "\(prefix): \(type.displayName) - Fehler"
             }
-            return "Blitztext: Fehler"
+            return "\(prefix): Fehler"
         }
     }
 
@@ -97,7 +106,11 @@ final class MenuBarStatusController {
 private enum MenuBarStatusIconRenderer {
     static func makeImage(for status: MenuBarStatus, frame: Int) -> NSImage {
         if case .idle = status, let baseImage = baseTemplateImage() {
+            #if DEBUG
+            return addDevBadgeToImage(baseImage)
+            #else
             return baseImage
+            #endif
         }
 
         let size = NSSize(width: 18, height: 18)
@@ -128,6 +141,11 @@ private enum MenuBarStatusIconRenderer {
             default:
                 break
             }
+
+            // Add DEV badge in debug builds
+            #if DEBUG
+            drawDevBadge(in: bounds)
+            #endif
 
             return true
         }
@@ -377,4 +395,39 @@ private enum MenuBarStatusIconRenderer {
         image.size = NSSize(width: 18, height: 18)
         return image
     }
+    
+    #if DEBUG
+    /// Adds a dev badge to an existing image (for idle state)
+    private static func addDevBadgeToImage(_ originalImage: NSImage) -> NSImage {
+        let size = NSSize(width: 18, height: 18)
+        let badgedImage = NSImage(size: size, flipped: false) { rect in
+            originalImage.draw(in: rect)
+            drawDevBadge(in: rect)
+            return true
+        }
+        badgedImage.isTemplate = true
+        return badgedImage
+    }
+    
+    /// Draws the orange dev badge
+    private static func drawDevBadge(in bounds: CGRect) {
+        let badgeSize: CGFloat = 5.5
+        let badgeRect = CGRect(
+            x: bounds.maxX - badgeSize - 0.5,
+            y: bounds.minY + 0.5,
+            width: badgeSize,
+            height: badgeSize
+        )
+        
+        // Orange circle - using black for template images (will be colored by system)
+        NSColor.black.withAlphaComponent(0.85).setFill()
+        let badgePath = NSBezierPath(ovalIn: badgeRect)
+        badgePath.fill()
+        
+        // White border for contrast
+        NSColor.white.withAlphaComponent(0.3).setStroke()
+        badgePath.lineWidth = 0.4
+        badgePath.stroke()
+    }
+    #endif
 }
