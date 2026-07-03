@@ -627,9 +627,9 @@ struct MenuBarView: View {
     private var appFooter: some View {
         VStack(spacing: 0) {
             Divider()
-            
+
             HStack(spacing: 12) {
-                // Quit button - now more prominent
+                // Quit button
                 Button {
                     NSApplication.shared.terminate(nil)
                 } label: {
@@ -643,9 +643,23 @@ struct MenuBarView: View {
                 .buttonStyle(SubtleButtonStyle())
                 .foregroundStyle(.secondary)
                 .help("Blitztext komplett beenden")
-                
+
                 Spacer()
-                
+
+                // Mini-Kostenanzeige
+                let monthCost = appState.usageTracker.costThisMonth
+                if monthCost > 0 {
+                    HStack(spacing: 4) {
+                        Image(systemName: "chart.bar.fill")
+                            .font(.system(size: 9, weight: .medium))
+                            .foregroundStyle(.tertiary)
+                        Text(TokenPricing.format(monthCost))
+                            .font(.system(size: 9, weight: .medium, design: .monospaced))
+                            .foregroundStyle(.tertiary)
+                    }
+                    .help("Kosten diesen Monat (nur Remote-Aufrufe)")
+                }
+
                 // Version info
                 Text("v2.0-FIXED")
                     .font(.system(size: 9, weight: .medium, design: .monospaced))
@@ -985,20 +999,21 @@ private func autoPasteView(text: String) -> some View {
                 .foregroundStyle(.green)
         }
 
-        Text("Eingef\u{00FC}gt")
+        Text("Fertig")
             .font(.system(size: 14, weight: .semibold))
             .foregroundStyle(.primary)
 
         Text(text)
             .font(.system(size: 11))
             .foregroundStyle(.secondary)
-            .lineLimit(3)
+            .lineLimit(6)
             .multilineTextAlignment(.center)
             .padding(.horizontal, 8)
 
         Spacer().frame(height: 12)
     }
 }
+
 
 private func errorView(message: String, onRetry: @escaping () -> Void) -> some View {
     VStack(spacing: 10) {

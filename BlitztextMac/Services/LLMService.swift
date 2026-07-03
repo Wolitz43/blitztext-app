@@ -61,7 +61,18 @@ private struct OpenAIChatResponse: Decodable {
         let message: Message?
     }
 
+    struct Usage: Decodable {
+        let promptTokens: Int
+        let completionTokens: Int
+
+        enum CodingKeys: String, CodingKey {
+            case promptTokens = "prompt_tokens"
+            case completionTokens = "completion_tokens"
+        }
+    }
+
     let choices: [Choice]?
+    let usage: Usage?
 }
 
 private struct OpenAIErrorResponse: Decodable {
@@ -70,6 +81,14 @@ private struct OpenAIErrorResponse: Decodable {
     }
 
     let error: APIError?
+}
+
+/// Token-Verbrauch eines einzelnen LLM-Aufrufs.
+struct LLMUsageInfo {
+    let model: String
+    let promptTokens: Int
+    let completionTokens: Int
+    let backend: LLMBackend
 }
 
 enum LLMService {
@@ -89,7 +108,7 @@ enum LLMService {
         settings: TextImprovementSettings,
         model: RewriteModel = .fastEdit,
         backend: LLMBackend = .remote
-    ) async throws -> String {
+    ) async throws -> (String, LLMUsageInfo) {
         let systemPrompt = buildSystemPrompt(settings: settings)
         switch backend {
         case .remote:
@@ -100,10 +119,11 @@ enum LLMService {
                 temperature: 0.3
             )
         case .local:
-            return try await LocalLLMService.improve(
+            let result = try await LocalLLMService.improve(
                 text: text,
                 systemPrompt: systemPrompt
             )
+            return (result, LLMUsageInfo(model: "apple-intelligence", promptTokens: 0, completionTokens: 0, backend: .local))
         }
     }
 
@@ -112,7 +132,7 @@ enum LLMService {
         systemPrompt: String,
         model: RewriteModel = .rageMode,
         backend: LLMBackend = .remote
-    ) async throws -> String {
+    ) async throws -> (String, LLMUsageInfo) {
         switch backend {
         case .remote:
             return try await complete(
@@ -122,10 +142,11 @@ enum LLMService {
                 temperature: 0.4
             )
         case .local:
-            return try await LocalLLMService.dampfAblassen(
+            let result = try await LocalLLMService.dampfAblassen(
                 text: text,
                 systemPrompt: systemPrompt
             )
+            return (result, LLMUsageInfo(model: "apple-intelligence", promptTokens: 0, completionTokens: 0, backend: .local))
         }
     }
 
@@ -134,7 +155,7 @@ enum LLMService {
         settings: EmojiTextSettings,
         model: RewriteModel = .fastEdit,
         backend: LLMBackend = .remote
-    ) async throws -> String {
+    ) async throws -> (String, LLMUsageInfo) {
         let systemPrompt = buildEmojiSystemPrompt(density: settings.emojiDensity)
         switch backend {
         case .remote:
@@ -145,10 +166,11 @@ enum LLMService {
                 temperature: 0.3
             )
         case .local:
-            return try await LocalLLMService.addEmojis(
+            let result = try await LocalLLMService.addEmojis(
                 text: text,
                 systemPrompt: systemPrompt
             )
+            return (result, LLMUsageInfo(model: "apple-intelligence", promptTokens: 0, completionTokens: 0, backend: .local))
         }
     }
 
@@ -157,7 +179,7 @@ enum LLMService {
         systemPrompt: String,
         model: RewriteModel,
         temperature: Double
-    ) async throws -> String {
+    ) async throws -> (String, LLMUsageInfo) {
         guard let apiKey = KeychainService.load(key: .openAIAPIKey) else {
             throw LLMError.notConfigured
         }
@@ -223,7 +245,13 @@ enum LLMService {
             throw LLMError.noContent
         }
 
-        return content.trimmingCharacters(in: .whitespacesAndNewlines)
+        let usageInfo = LLMUsageInfo(
+            model: model.rawValue,
+            promptTokens: result.usage?.promptTokens ?? 0,
+            completionTokens: result.usage?.completionTokens ?? 0,
+            backend: .remote
+        )
+        return (content.trimmingCharacters(in: .whitespacesAndNewlines), usageInfo)
     }
 
     private static func openAIErrorMessage(from data: Data) -> String? {

@@ -1,4 +1,5 @@
 import Foundation
+import AVFoundation
 
 enum TranscriptionError: LocalizedError {
     case noFile
@@ -28,6 +29,13 @@ private struct TranscriptionOpenAIErrorResponse: Decodable {
     let error: APIError?
 }
 
+/// Ergebnis eines Transkriptions-Aufrufs inkl. Metadaten für den Usage-Tracker.
+struct TranscriptionUsageInfo {
+    let model: String
+    let audioDurationSeconds: Double
+    let backend: TranscriptionBackend
+}
+
 enum TranscriptionService {
     private static let remoteModel = "whisper-1"
     private static let transcriptionsURL = URL(string: "https://api.openai.com/v1/audio/transcriptions")!
@@ -45,10 +53,13 @@ enum TranscriptionService {
         audioURL: URL,
         customTerms: [String] = [],
         language: String? = nil
-    ) async throws -> String {
+    ) async throws -> (String, TranscriptionUsageInfo) {
         guard let apiKey = KeychainService.load(key: .openAIAPIKey) else {
             throw TranscriptionError.notConfigured
         }
+
+        // Audiodauer aus Datei-Metadaten lesen, bevor die Datei gelöscht wird
+        let audioDuration = audioFileDuration(at: audioURL)
 
         return try await Task.detached(priority: .userInitiated) {
             defer {
@@ -117,8 +128,21 @@ enum TranscriptionService {
                 throw TranscriptionError.apiError("Transkription fehlgeschlagen")
             }
 
-            return text
+            let usageInfo = TranscriptionUsageInfo(
+                model: remoteModel,
+                audioDurationSeconds: audioDuration,
+                backend: .remote
+            )
+            return (text, usageInfo)
         }.value
+    }
+
+    /// Liest die Audiodauer aus den Datei-Metadaten via AVFoundation.
+    private static func audioFileDuration(at url: URL) -> Double {
+        let asset = AVURLAsset(url: url)
+        let duration = asset.duration
+        guard duration.isValid, !duration.isIndefinite else { return 0 }
+        return duration.seconds
     }
 
     private static func openAIErrorMessage(from data: Data) -> String? {

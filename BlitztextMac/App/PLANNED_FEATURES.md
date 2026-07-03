@@ -1,5 +1,74 @@
 # Blitztext – Geplante Features
-# Stand: 01.07.2026
+# Stand: 03.07.2026
+
+## ✅ Erledigt (03.07.2026)
+- Kein Auto-Paste wenn Workflow über Popover gestartet wird (nur bei Hotkey)
+- Usage-Tracker: Token-Verbrauch und API-Kosten werden getrackt und angezeigt
+
+
+---
+
+
+## Projekt-Setup: Debug vs. Release
+
+### Zwei Xcode-Schemes
+Das Projekt hat zwei separate Schemes:
+
+| Scheme                  | Konfiguration | Zweck                              |
+|-------------------------|---------------|------------------------------------|
+| `Blitztext (Debug)`     | Debug         | Entwicklung & Testen in Xcode      |
+| `Blitztext (Release)`   | Release       | Produktiv-Build nach /Applications |
+
+Umschalten: Scheme-Dropdown oben in Xcode → gewünschtes Scheme wählen → Cmd+B
+
+### Unterschiede Debug vs. Release
+
+#### Datenpfade (AppSupportPaths.swift)
+```swift
+#if DEBUG
+// ~/Library/Application Support/Blitztext Dev/
+#else
+// ~/Library/Application Support/Blitztext/
+#endif
+```
+Debug und Release haben **getrennte Daten** (Settings, usage.json, Modelle).
+Änderungen im Debug-Build beeinflussen die Release-Version nicht.
+
+#### Auto-Paste-Verhalten (AppState.swift)
+- **Debug & Release**: Kein Auto-Paste wenn Workflow über den Popover gestartet wird
+- **Debug & Release**: Auto-Paste nur bei Hotkey-Start im Hintergrund (`.hotkeyBackground`)
+- Kein `#if DEBUG`-Block mehr im Paste-Code – Verhalten ist in beiden Builds identisch
+
+### Build Script (Release → /Applications)
+In den Xcode Build Phases ist ein Run Script hinterlegt, das bei jedem
+Release-Build die App automatisch nach /Applications kopiert und die
+Quarantäne-Attribute entfernt (damit macOS die App nicht blockiert):
+
+```bash
+if [ "${CONFIGURATION}" = "Release" ]; then
+    APP_NAME="${PRODUCT_NAME}.app"
+    SOURCE="${BUILT_PRODUCTS_DIR}/${APP_NAME}"
+    DEST="/Applications/${APP_NAME}"
+
+    if [ -d "$DEST" ]; then
+        rm -rf "$DEST"
+    fi
+
+    cp -R "$SOURCE" "$DEST"
+    xattr -cr "$DEST"
+
+    echo "✅ ${APP_NAME} wurde nach /Applications kopiert."
+fi
+```
+
+### Workflow für einen Release-Build
+1. Scheme auf **„Blitztext (Release)"** umstellen
+2. **Cmd+B**
+3. App ist automatisch in `/Applications` aktualisiert und startbereit
+
+
+---
+
 
 ## Feature 1: Übersetzer-Workflow „Blitztext 🌍"
 
@@ -202,3 +271,94 @@ C) Beides (empfohlen)
 - Korrekturlesen: Markierten Text lesen (Cmd+C), verbessern, einfügen (Cmd+V)
 - Widget / Live Activity für macOS
 - iPad-Companion-App (gleiche Cloud-Services, eigene UI)
+
+---
+
+
+## Feature X: Ollama-Support (lokale KI als drittes Backend)
+
+### Konzept
+Ollama als drittes LLM-Backend neben OpenAI (remote) und Apple Intelligence (lokal).
+Ollama läuft als lokaler HTTP-Server auf dem Mac und ist vollständig kostenlos.
+Die API ist OpenAI-kompatibel → minimale Code-Änderungen nötig.
+
+### Technische Grundlage
+- Ollama läuft auf: `http://localhost:11434`
+- API-Endpunkt: `http://localhost:11434/v1/chat/completions`
+- Identisches Request/Response-Format wie OpenAI Chat Completions
+- Kein API-Key nötig
+
+### Qualitätsvergleich (Stand Juli 2026)
+
+| Modell            | Qualität       | RAM-Bedarf | Geschwindigkeit |
+|-------------------|----------------|------------|-----------------|
+| gpt-4o-mini       | ⭐⭐⭐⭐⭐      | –          | schnell         |
+| llama3.2:3b       | ⭐⭐⭐          | ~4 GB      | mittel          |
+| llama3.1:8b       | ⭐⭐⭐⭐        | ~8 GB      | langsamer       |
+| mistral:7b        | ⭐⭐⭐⭐        | ~8 GB      | mittel          |
+| llama3.3:70b      | ⭐⭐⭐⭐⭐      | ~48 GB     | sehr langsam    |
+
+Empfehlung für Blitztext-Aufgaben:
+- Einfache Textkorrekturen: `llama3.2:3b` (schnell, wenig RAM)
+- Bessere Qualität: `mistral:7b` (gut für Deutsch)
+- Dampf ablassen / komplexe Umformulierung: weiterhin GPT-4o empfohlen
+
+### Benötigte Code-Änderungen
+
+#### `LLMBackend` (WorkflowProtocol.swift)
+```swift
+enum LLMBackend: String, Codable, CaseIterable {
+    case remote   // OpenAI API
+    case local    // Apple Intelligence
+    case ollama   // Lokales Ollama
+}
+```
+
+#### `LLMService.swift`
+```swift
+private static let ollamaURL = URL(string: "http://localhost:11434/v1/chat/completions")!
+
+// Neue complete()-Variante für Ollama (kein API-Key, andere baseURL)
+// Ansonsten identisch mit der remote-Variante
+```
+
+#### Neue Einstellung (AppSettings oder eigene OllamaSettings)
+```swift
+struct OllamaSettings: Codable {
+    var model: String = "llama3.2:3b"   // Frei einstellbar
+    var baseURL: String = "http://localhost:11434"  // Für custom Instanzen
+}
+```
+
+#### Zu ändernde Dateien
+- `WorkflowProtocol.swift`   → neuer case `.ollama` in `LLMBackend`
+- `LLMService.swift`         → neue `completeOllama()`-Methode
+- `AppState.swift`           → `ollamaSettings`, `resolvedLLMBackend` erweitern
+- `SettingsContentView.swift` → Ollama-Sektion (URL + Modell-Name + Verbindungstest)
+- `MenuBarView.swift`        → Ollama als Option im Modus-Panel
+
+#### Verbindungstest-Endpoint
+```swift
+// Prüfen ob Ollama läuft:
+GET http://localhost:11434/api/tags
+// Gibt installierte Modelle zurück → für Picker in den Einstellungen nutzbar
+```
+
+### Voraussetzungen für den Nutzer
+1. Ollama installieren: https://ollama.com (kostenlos, ~500 MB)
+2. Modell laden: `ollama pull llama3.2:3b` im Terminal
+3. Ollama startet automatisch beim Login
+
+### Pros & Cons
+Pros:
+- Vollständig kostenlos nach einmaligem Download
+- Datenschutz – nichts verlässt den Mac
+- Kein API-Key nötig
+- Usage-Tracker zeigt $0.00 (aber lokale Aufrufe werden trotzdem gezählt)
+
+Cons:
+- Ollama muss separat installiert sein (externe Abhängigkeit)
+- Qualität bei komplexen Umformulierungen schlechter als GPT-4o-mini
+- Langsamere Antwortzeiten je nach Mac-Hardware und Modell
+- App muss prüfen ob Ollama überhaupt läuft (Fehlerbehandlung nötig)
+

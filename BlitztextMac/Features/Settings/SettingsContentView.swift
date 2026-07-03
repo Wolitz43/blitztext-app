@@ -7,10 +7,11 @@ struct SettingsContentView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // Two-tab segmented picker
+            // Three-tab segmented picker
             Picker("", selection: $selectedTab) {
                 Text("Anpassen").tag(0)
                 Text("Zugang").tag(1)
+                Text("Verbrauch").tag(2)
             }
             .pickerStyle(.segmented)
             .padding(.horizontal, 16)
@@ -19,8 +20,10 @@ struct SettingsContentView: View {
             ScrollView {
                 if selectedTab == 0 {
                     CustomizeSettingsView(appState: appState)
-                } else {
+                } else if selectedTab == 1 {
                     AccessSettingsView(appState: appState)
+                } else {
+                    UsageSettingsView(tracker: appState.usageTracker)
                 }
             }
         }

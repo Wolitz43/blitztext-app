@@ -58,6 +58,9 @@ final class AppState {
     // Hotkeys
     let hotkeyService = HotkeyService()
 
+    // Usage Tracking
+    let usageTracker = UsageTracker()
+
     // Computed - check on every access to ensure API key changes are detected
     var isConfigured: Bool {
         KeychainService.isConfigured
@@ -519,11 +522,19 @@ final class AppState {
     }
 
     private func handleWorkflowOutput(_ text: String) {
-        pasteAtCursor(text, target: activePasteTarget)
-        if activeLaunchSource == .hotkeyBackground {
+        switch activeLaunchSource {
+        case .hotkeyBackground:
+            // Hotkey im Hintergrund → Text in externe App einfügen, dann aufräumen
+            pasteAtCursor(text, target: activePasteTarget)
             page = .main
+            scheduleWorkflowCleanup(after: 1.05)
+
+        case .manual:
+            // Klick im Popover → Text nur im Fenster anzeigen, kein Auto-Paste
+            // Der Text bleibt in der UI sichtbar (autoPasteView), Clipboard wird trotzdem gesetzt
+            // damit man manuell mit Cmd+V einfügen kann falls gewünscht.
+            writeSensitiveTextToPasteboard(text)
         }
-        scheduleWorkflowCleanup(after: 1.05)
     }
 
     private func configureWorkflowHandlers<T: Workflow>(_ workflow: T) {
@@ -533,6 +544,9 @@ final class AppState {
         workflow.onPhaseChange = { [weak self, weak workflow] phase in
             guard let self, let workflow else { return }
             self.handleWorkflowPhaseChange(phase, workflow: workflow)
+        }
+        workflow.onUsage = { [weak self] record in
+            self?.usageTracker.track(record)
         }
     }
 

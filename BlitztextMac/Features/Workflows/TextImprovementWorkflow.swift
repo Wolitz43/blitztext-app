@@ -11,6 +11,7 @@ final class TextImprovementWorkflow: Workflow {
     }
     var onOutput: WorkflowOutputHandler?
     var onPhaseChange: WorkflowPhaseChangeHandler?
+    var onUsage: WorkflowUsageHandler?
 
     private let recorder = AudioRecorder()
     private let settings: TextImprovementSettings
@@ -101,12 +102,35 @@ final class TextImprovementWorkflow: Workflow {
                         language: language,
                         modelName: localModelName
                     )
+                    let record = UsageRecord(
+                        workflowType: type,
+                        model: "whisperkit",
+                        backend: .local,
+                        audioDurationSeconds: recordingDuration,
+                        estimatedCostUSD: 0
+                    )
+                    onUsage?(record)
                 case .remote:
-                    rawText = try await TranscriptionService.transcribe(
+                    let (transcribed, usageInfo) = try await TranscriptionService.transcribe(
                         audioURL: url,
                         customTerms: vocabularyHints,
                         language: language
                     )
+                    rawText = transcribed
+                    let cost = TokenPricing.cost(
+                        model: usageInfo.model,
+                        promptTokens: 0,
+                        completionTokens: 0,
+                        audioDurationSeconds: usageInfo.audioDurationSeconds
+                    )
+                    let record = UsageRecord(
+                        workflowType: type,
+                        model: usageInfo.model,
+                        backend: .remote,
+                        audioDurationSeconds: usageInfo.audioDurationSeconds,
+                        estimatedCostUSD: cost
+                    )
+                    onUsage?(record)
                 }
                 let cleanedRawText = TranscriptionQualityService.cleanedTranscript(rawText)
                 guard !TranscriptionQualityService.isLikelyArtifact(cleanedRawText, recordingDuration: recordingDuration) else {
@@ -119,11 +143,26 @@ final class TextImprovementWorkflow: Workflow {
                 // Phase 2: GPT improvement
                 phase = .running("Text wird verbessert ...")
 
-                let improved = try await LLMService.improve(
+                let (improved, llmUsage) = try await LLMService.improve(
                     text: cleanedRawText,
                     settings: settings,
                     backend: llmBackend
                 )
+                let llmCost = TokenPricing.cost(
+                    model: llmUsage.model,
+                    promptTokens: llmUsage.promptTokens,
+                    completionTokens: llmUsage.completionTokens,
+                    audioDurationSeconds: 0
+                )
+                let llmRecord = UsageRecord(
+                    workflowType: type,
+                    model: llmUsage.model,
+                    backend: llmUsage.backend,
+                    promptTokens: llmUsage.promptTokens,
+                    completionTokens: llmUsage.completionTokens,
+                    estimatedCostUSD: llmCost
+                )
+                onUsage?(llmRecord)
 
                 let cleanedImproved = TranscriptionQualityService.cleanedTranscript(improved)
                 phase = .done(cleanedImproved)

@@ -18,6 +18,7 @@ final class TranscriptionWorkflow: Workflow {
     }
     var onOutput: WorkflowOutputHandler?
     var onPhaseChange: WorkflowPhaseChangeHandler?
+    var onUsage: WorkflowUsageHandler?
 
     private let recorder = AudioRecorder()
     private let customTerms: [String]
@@ -98,17 +99,40 @@ final class TranscriptionWorkflow: Workflow {
                 let text: String
                 switch backend {
                 case .remote:
-                    text = try await TranscriptionService.transcribe(
+                    let (transcribed, usageInfo) = try await TranscriptionService.transcribe(
                         audioURL: url,
                         customTerms: vocabularyHints,
                         language: requestLanguage
                     )
+                    text = transcribed
+                    let cost = TokenPricing.cost(
+                        model: usageInfo.model,
+                        promptTokens: 0,
+                        completionTokens: 0,
+                        audioDurationSeconds: usageInfo.audioDurationSeconds
+                    )
+                    let record = UsageRecord(
+                        workflowType: type,
+                        model: usageInfo.model,
+                        backend: .remote,
+                        audioDurationSeconds: usageInfo.audioDurationSeconds,
+                        estimatedCostUSD: cost
+                    )
+                    onUsage?(record)
                 case .local:
                     text = try await LocalTranscriptionService.shared.transcribe(
                         audioURL: url,
                         language: requestLanguage,
                         modelName: localModelName
                     )
+                    let record = UsageRecord(
+                        workflowType: type,
+                        model: "whisperkit",
+                        backend: .local,
+                        audioDurationSeconds: recordingDuration,
+                        estimatedCostUSD: 0
+                    )
+                    onUsage?(record)
                 }
                 try Task.checkCancellation()
 

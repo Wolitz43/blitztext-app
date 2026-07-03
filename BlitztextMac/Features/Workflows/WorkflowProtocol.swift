@@ -98,6 +98,7 @@ enum WorkflowLaunchSource: Equatable {
 
 typealias WorkflowOutputHandler = @MainActor (String) -> Void
 typealias WorkflowPhaseChangeHandler = @MainActor (WorkflowPhase) -> Void
+typealias WorkflowUsageHandler = @MainActor (UsageRecord) -> Void
 
 // MARK: - Workflow Protocol
 
@@ -108,6 +109,7 @@ protocol Workflow: AnyObject, Observable {
     var isRecording: Bool { get }
     var onOutput: WorkflowOutputHandler? { get set }
     var onPhaseChange: WorkflowPhaseChangeHandler? { get set }
+    var onUsage: WorkflowUsageHandler? { get set }
 
     func start()
     func stop()

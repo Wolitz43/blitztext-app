@@ -11,6 +11,7 @@ final class DampfAblassenWorkflow: Workflow {
     }
     var onOutput: WorkflowOutputHandler?
     var onPhaseChange: WorkflowPhaseChangeHandler?
+    var onUsage: WorkflowUsageHandler?
 
     private let recorder = AudioRecorder()
     private let settings: DampfAblassenSettings
@@ -104,12 +105,35 @@ final class DampfAblassenWorkflow: Workflow {
                         language: language,
                         modelName: localModelName
                     )
+                    let record = UsageRecord(
+                        workflowType: type,
+                        model: "whisperkit",
+                        backend: .local,
+                        audioDurationSeconds: recordingDuration,
+                        estimatedCostUSD: 0
+                    )
+                    onUsage?(record)
                 case .remote:
-                    rawText = try await TranscriptionService.transcribe(
+                    let (transcribed, usageInfo) = try await TranscriptionService.transcribe(
                         audioURL: url,
                         customTerms: vocabularyHints,
                         language: language
                     )
+                    rawText = transcribed
+                    let cost = TokenPricing.cost(
+                        model: usageInfo.model,
+                        promptTokens: 0,
+                        completionTokens: 0,
+                        audioDurationSeconds: usageInfo.audioDurationSeconds
+                    )
+                    let record = UsageRecord(
+                        workflowType: type,
+                        model: usageInfo.model,
+                        backend: .remote,
+                        audioDurationSeconds: usageInfo.audioDurationSeconds,
+                        estimatedCostUSD: cost
+                    )
+                    onUsage?(record)
                 }
                 let cleanedRawText = TranscriptionQualityService.cleanedTranscript(rawText)
                 guard !TranscriptionQualityService.isLikelyArtifact(cleanedRawText, recordingDuration: recordingDuration) else {
@@ -122,11 +146,27 @@ final class DampfAblassenWorkflow: Workflow {
                 // Phase 2: GPT dampf ablassen
                 phase = .running("Wird umformuliert ...")
 
-                let answer = try await LLMService.dampfAblassen(
+                let (answer, llmUsage) = try await LLMService.dampfAblassen(
                     text: cleanedRawText,
                     systemPrompt: settings.systemPrompt,
                     backend: llmBackend
                 )
+                let llmCost = TokenPricing.cost(
+                    model: llmUsage.model,
+                    promptTokens: llmUsage.promptTokens,
+                    completionTokens: llmUsage.completionTokens,
+                    audioDurationSeconds: 0
+                )
+                let llmRecord = UsageRecord(
+                    workflowType: type,
+                    model: llmUsage.model,
+                    backend: llmUsage.backend,
+                    promptTokens: llmUsage.promptTokens,
+                    completionTokens: llmUsage.completionTokens,
+                    estimatedCostUSD: llmCost
+                )
+                onUsage?(llmRecord)
+
                 let cleanedAnswer = TranscriptionQualityService.cleanedTranscript(answer)
                 guard cleanedAnswer != "KEINE_AUFNAHME_ERKANNT" else {
                     phase = .error("Keine Aufnahme erkannt.")
