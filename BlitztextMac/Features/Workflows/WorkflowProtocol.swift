@@ -8,7 +8,6 @@ enum WorkflowType: String, CaseIterable, Identifiable, Codable {
     case textImprover
     case dampfAblassen
     case emojiText
-    case translate
 
     var id: String { rawValue }
 
@@ -23,7 +22,6 @@ enum WorkflowType: String, CaseIterable, Identifiable, Codable {
         case .textImprover:      return "Blitztext+"
         case .dampfAblassen:     return "Blitztext $%&!"
         case .emojiText:         return "Blitztext :)"
-        case .translate:         return "Blitztext 🌍"
         }
     }
 
@@ -34,7 +32,6 @@ enum WorkflowType: String, CaseIterable, Identifiable, Codable {
         case .textImprover:      return "text.badge.checkmark"
         case .dampfAblassen:     return "flame.fill"
         case .emojiText:         return "face.smiling"
-        case .translate:         return "globe"
         }
     }
 
@@ -45,7 +42,6 @@ enum WorkflowType: String, CaseIterable, Identifiable, Codable {
         case .textImprover:      return "Geschrieben sprechen."
         case .dampfAblassen:     return "Frust rein. Entspannt raus."
         case .emojiText:         return "Text rein. Emojis dazu."
-        case .translate:         return "Deutsch rein. Übersetzt raus."
         }
     }
 
@@ -56,7 +52,6 @@ enum WorkflowType: String, CaseIterable, Identifiable, Codable {
         case .textImprover:      return "fn + Control"
         case .dampfAblassen:     return "fn + Option"
         case .emojiText:         return "fn + Cmd"
-        case .translate:         return "fn + T"
         }
     }
 
@@ -67,7 +62,6 @@ enum WorkflowType: String, CaseIterable, Identifiable, Codable {
         case .textImprover:      return "purple"
         case .dampfAblassen:     return "orange"
         case .emojiText:         return "cyan"
-        case .translate:         return "teal"
         }
     }
 }
@@ -113,6 +107,7 @@ protocol Workflow: AnyObject, Observable {
     var type: WorkflowType { get }
     var phase: WorkflowPhase { get set }
     var isRecording: Bool { get }
+    var audioLevel: Float { get }
     var onOutput: WorkflowOutputHandler? { get set }
     var onPhaseChange: WorkflowPhaseChangeHandler? { get set }
     var onUsage: WorkflowUsageHandler? { get set }
@@ -130,19 +125,22 @@ struct AppSettings: Codable {
     var secureLocalModeEnabled: Bool = false
     var selectedLocalTranscriptionModelName: String = LocalTranscriptionService.recommendedFastModelName
     var hasAutoSelectedFastLocalModel: Bool = false
+    var translationEnabled: Bool = false
 
     init(
         hotkeyMode: HotkeyMode = .hold,
         hasSeenOnboarding: Bool = false,
         secureLocalModeEnabled: Bool = false,
         selectedLocalTranscriptionModelName: String = LocalTranscriptionService.recommendedFastModelName,
-        hasAutoSelectedFastLocalModel: Bool = false
+        hasAutoSelectedFastLocalModel: Bool = false,
+        translationEnabled: Bool = false
     ) {
         self.hotkeyMode = hotkeyMode
         self.hasSeenOnboarding = hasSeenOnboarding
         self.secureLocalModeEnabled = secureLocalModeEnabled
         self.selectedLocalTranscriptionModelName = selectedLocalTranscriptionModelName
         self.hasAutoSelectedFastLocalModel = hasAutoSelectedFastLocalModel
+        self.translationEnabled = translationEnabled
     }
 
     enum CodingKeys: String, CodingKey {
@@ -151,6 +149,7 @@ struct AppSettings: Codable {
         case secureLocalModeEnabled
         case selectedLocalTranscriptionModelName
         case hasAutoSelectedFastLocalModel
+        case translationEnabled
     }
 
     init(from decoder: Decoder) throws {
@@ -166,6 +165,7 @@ struct AppSettings: Codable {
             Bool.self,
             forKey: .hasAutoSelectedFastLocalModel
         ) ?? false
+        translationEnabled = try container.decodeIfPresent(Bool.self, forKey: .translationEnabled) ?? false
     }
 }
 
@@ -174,20 +174,118 @@ enum TranscriptionBackend: String, Codable {
     case local
 }
 
+// MARK: - Translation Step Settings (shared by all 4 workflows)
+
+struct TranslationStepSettings: Codable {
+    var targetLanguage: TargetLanguage = .english
+    var tone: TranslateTone = .neutral
+    var context: String = ""
+}
+
+enum TargetLanguage: String, Codable, CaseIterable, Identifiable {
+    case english    = "en"
+    case french     = "fr"
+    case spanish    = "es"
+    case italian    = "it"
+    case portuguese = "pt"
+    case dutch      = "nl"
+    case polish     = "pl"
+    case japanese   = "ja"
+
+    var id: String { rawValue }
+
+    /// Nur diese 4 werden aktuell in der UI angeboten; die übrigen Fälle
+    /// bleiben für spätere Erweiterung im Enum und in der Persistenz erhalten.
+    static let selectable: [TargetLanguage] = [.english, .french, .spanish, .italian]
+
+    var displayName: String {
+        switch self {
+        case .english:    return "Englisch"
+        case .french:     return "Französisch"
+        case .spanish:    return "Spanisch"
+        case .italian:    return "Italienisch"
+        case .portuguese: return "Portugiesisch"
+        case .dutch:      return "Niederländisch"
+        case .polish:     return "Polnisch"
+        case .japanese:   return "Japanisch"
+        }
+    }
+
+    var englishName: String {
+        switch self {
+        case .english:    return "English"
+        case .french:     return "French"
+        case .spanish:    return "Spanish"
+        case .italian:    return "Italian"
+        case .portuguese: return "Portuguese"
+        case .dutch:      return "Dutch"
+        case .polish:     return "Polish"
+        case .japanese:   return "Japanese"
+        }
+    }
+}
+
+enum TranslateTone: String, Codable, CaseIterable, Identifiable {
+    case formal
+    case neutral
+    case casual
+
+    var id: String { rawValue }
+
+    var displayName: String {
+        switch self {
+        case .formal:  return "Formell"
+        case .neutral: return "Neutral"
+        case .casual:  return "Locker"
+        }
+    }
+}
+
 // MARK: - Workflow Settings
 
 struct TranscriptionSettings: Codable {
     var language: String = "de"
+    var translation: TranslationStepSettings = TranslationStepSettings()
+
+    enum CodingKeys: String, CodingKey {
+        case language
+        case translation
+    }
+
+    init() {}
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        language = try container.decodeIfPresent(String.self, forKey: .language) ?? "de"
+        translation = try container.decodeIfPresent(TranslationStepSettings.self, forKey: .translation) ?? TranslationStepSettings()
+    }
 }
 
 struct DampfAblassenSettings: Codable {
     var systemPrompt: String = "Du erhältst ein emotional gesprochenes Transkript. Erkenne zuerst das eigentliche Ziel, Anliegen und den wahren Frust der Person. Formuliere daraus eine klare, respektvolle und wirksame Nachricht, mit der die Person ihr Ziel eher erreicht. Bewahre relevante Fakten, konkrete Probleme, Grenzen, Erwartungen und die nötige Dringlichkeit. Entferne Beleidigungen, Drohungen, Sarkasmus, Unterstellungen und unnötige Eskalation. Wenn mehrere Vorwürfe genannt werden, verdichte sie auf die entscheidenden Kernpunkte. Der Ton soll ruhig, menschlich, bestimmt und lösungsorientiert sein. Gib NUR die fertige Nachricht zurück."
     var customName: String = ""
+    var translation: TranslationStepSettings = TranslationStepSettings()
+
+    enum CodingKeys: String, CodingKey {
+        case systemPrompt
+        case customName
+        case translation
+    }
+
+    init() {}
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        systemPrompt = try container.decode(String.self, forKey: .systemPrompt)
+        customName = try container.decode(String.self, forKey: .customName)
+        translation = try container.decodeIfPresent(TranslationStepSettings.self, forKey: .translation) ?? TranslationStepSettings()
+    }
 }
 
 struct EmojiTextSettings: Codable {
     var emojiDensity: EmojiDensity = .mittel
     var customName: String = ""
+    var translation: TranslationStepSettings = TranslationStepSettings()
 
     enum EmojiDensity: String, Codable, CaseIterable, Identifiable {
         case wenig
@@ -204,6 +302,21 @@ struct EmojiTextSettings: Codable {
             }
         }
     }
+
+    enum CodingKeys: String, CodingKey {
+        case emojiDensity
+        case customName
+        case translation
+    }
+
+    init() {}
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        emojiDensity = try container.decode(EmojiDensity.self, forKey: .emojiDensity)
+        customName = try container.decode(String.self, forKey: .customName)
+        translation = try container.decodeIfPresent(TranslationStepSettings.self, forKey: .translation) ?? TranslationStepSettings()
+    }
 }
 
 struct TextImprovementSettings: Codable {
@@ -212,6 +325,7 @@ struct TextImprovementSettings: Codable {
     var context: String = ""
     var tone: TextTone = .neutral
     var customName: String = ""
+    var translation: TranslationStepSettings = TranslationStepSettings()
 
     enum TextTone: String, Codable, CaseIterable, Identifiable {
         case formal
@@ -227,5 +341,26 @@ struct TextImprovementSettings: Codable {
             case .casual: return "Locker"
             }
         }
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case systemPrompt
+        case customTerms
+        case context
+        case tone
+        case customName
+        case translation
+    }
+
+    init() {}
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        systemPrompt = try container.decode(String.self, forKey: .systemPrompt)
+        customTerms = try container.decode([String].self, forKey: .customTerms)
+        context = try container.decode(String.self, forKey: .context)
+        tone = try container.decode(TextTone.self, forKey: .tone)
+        customName = try container.decode(String.self, forKey: .customName)
+        translation = try container.decodeIfPresent(TranslationStepSettings.self, forKey: .translation) ?? TranslationStepSettings()
     }
 }
