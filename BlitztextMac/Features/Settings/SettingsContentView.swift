@@ -667,6 +667,26 @@ struct CustomizeSettingsView: View {
                 }
             }
 
+            // MARK: Übersetzung (global)
+            VStack(alignment: .leading, spacing: 10) {
+                SectionLabel(text: "Übersetzung")
+
+                Toggle("Ausgabe übersetzen", isOn: $appState.appSettings.translationEnabled)
+                    .toggleStyle(.switch)
+
+                Text("Wenn aktiv, wird die Ausgabe jedes Workflows zusätzlich in die unten je Workflow eingestellte Zielsprache übersetzt.")
+                    .font(.system(size: 10.5))
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            // MARK: Blitztext (Transkription)
+            VStack(alignment: .leading, spacing: 10) {
+                SectionLabel(text: "Blitztext")
+
+                TranslationStepSettingsView(settings: $appState.transcriptionSettings.translation)
+            }
+
             // MARK: Blitztext+
             VStack(alignment: .leading, spacing: 10) {
                 SectionLabel(text: "Blitztext+")
@@ -720,6 +740,8 @@ struct CustomizeSettingsView: View {
                         .textFieldStyle(.roundedBorder)
                         .font(.system(size: 11))
                 }
+
+                TranslationStepSettingsView(settings: $appState.textImprovementSettings.translation)
             }
 
             // MARK: Blitztext $%&!
@@ -749,6 +771,8 @@ struct CustomizeSettingsView: View {
                             }
                         }
                 }
+
+                TranslationStepSettingsView(settings: $appState.dampfAblassenSettings.translation)
             }
 
             // MARK: Blitztext :)
@@ -767,37 +791,8 @@ struct CustomizeSettingsView: View {
                     }
                     .pickerStyle(.segmented)
                 }
-            }
 
-            // MARK: Blitztext 🌍
-            VStack(alignment: .leading, spacing: 10) {
-                SectionLabel(text: "Blitztext 🌍")
-
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Zielsprache")
-                        .font(.system(size: 11))
-                        .foregroundStyle(.secondary)
-
-                    Picker("", selection: $appState.translateSettings.targetLanguage) {
-                        ForEach(TranslateSettings.TargetLanguage.allCases) { lang in
-                            Text(lang.displayName).tag(lang)
-                        }
-                    }
-                    .pickerStyle(.segmented)
-                }
-
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Ton")
-                        .font(.system(size: 11))
-                        .foregroundStyle(.secondary)
-
-                    Picker("", selection: $appState.translateSettings.tone) {
-                        ForEach(TranslateSettings.TranslateTone.allCases) { tone in
-                            Text(tone.displayName).tag(tone)
-                        }
-                    }
-                    .pickerStyle(.segmented)
-                }
+                TranslationStepSettingsView(settings: $appState.emojiTextSettings.translation)
             }
 
             // MARK: Eigennamen
@@ -905,5 +900,37 @@ struct FlowLayout: Layout {
         }
 
         return (positions, CGSize(width: maxX, height: y + rowHeight))
+    }
+}
+
+// MARK: - Translation Step Settings (shared subsection)
+
+private struct TranslationStepSettingsView: View {
+    @Binding var settings: TranslationStepSettings
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Übersetzung")
+                .font(.system(size: 11))
+                .foregroundStyle(.secondary)
+
+            Picker("", selection: $settings.targetLanguage) {
+                ForEach(TargetLanguage.selectable) { lang in
+                    Text(lang.displayName).tag(lang)
+                }
+            }
+            .pickerStyle(.segmented)
+
+            Picker("", selection: $settings.tone) {
+                ForEach(TranslateTone.allCases) { tone in
+                    Text(tone.displayName).tag(tone)
+                }
+            }
+            .pickerStyle(.segmented)
+
+            TextField("Kontext (optional)", text: $settings.context)
+                .textFieldStyle(.roundedBorder)
+                .font(.system(size: 11))
+        }
     }
 }
