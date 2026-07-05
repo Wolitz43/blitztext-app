@@ -72,6 +72,7 @@ final class TranslatingWorkflow: Workflow {
                     systemPrompt: systemPrompt,
                     backend: backend
                 )
+                guard !Task.isCancelled else { return }
                 let llmCost = TokenPricing.cost(
                     model: llmUsage.model,
                     promptTokens: llmUsage.promptTokens,
@@ -92,6 +93,7 @@ final class TranslatingWorkflow: Workflow {
                 phase = .done(cleanedTranslation)
                 onOutput?(cleanedTranslation)
             } catch {
+                guard !Task.isCancelled else { return }
                 // Übersetzung fehlgeschlagen: Originaltext nicht verwerfen, direkt als
                 // fertiges Ergebnis melden (kein .error-Zwischenschritt, siehe
                 // "Abweichung von der Spec" in den Global Constraints).
