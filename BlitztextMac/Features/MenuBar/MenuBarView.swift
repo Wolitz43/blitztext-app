@@ -777,19 +777,6 @@ struct WorkflowActiveView: View {
 
 // MARK: - Shared Result / Error Views
 
-private func processingView(message: String) -> some View {
-    VStack(spacing: 12) {
-        Spacer().frame(height: 24)
-        ProgressView()
-            .scaleEffect(0.7)
-            .controlSize(.small)
-        Text(message)
-            .font(.system(size: 11.5))
-            .foregroundStyle(.secondary)
-        Spacer().frame(height: 24)
-    }
-}
-
 private func autoPasteView(text: String) -> some View {
     VStack(spacing: 12) {
         Spacer().frame(height: 20)
