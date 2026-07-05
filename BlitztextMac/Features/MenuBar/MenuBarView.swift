@@ -615,6 +615,10 @@ struct MenuBarView: View {
                     if let w = workflow as? EmojiTextWorkflow {
                         EmojiTextActiveView(workflow: w)
                     }
+                case .translate:
+                    if let w = workflow as? TranslateWorkflow {
+                        TranslateActiveView(workflow: w)
+                    }
                 }
 
                 Spacer(minLength: 0)
@@ -627,9 +631,9 @@ struct MenuBarView: View {
     private var appFooter: some View {
         VStack(spacing: 0) {
             Divider()
-
+            
             HStack(spacing: 12) {
-                // Quit button
+                // Quit button - now more prominent
                 Button {
                     NSApplication.shared.terminate(nil)
                 } label: {
@@ -643,23 +647,9 @@ struct MenuBarView: View {
                 .buttonStyle(SubtleButtonStyle())
                 .foregroundStyle(.secondary)
                 .help("Blitztext komplett beenden")
-
+                
                 Spacer()
-
-                // Mini-Kostenanzeige
-                let monthCost = appState.usageTracker.costThisMonth
-                if monthCost > 0 {
-                    HStack(spacing: 4) {
-                        Image(systemName: "chart.bar.fill")
-                            .font(.system(size: 9, weight: .medium))
-                            .foregroundStyle(.tertiary)
-                        Text(TokenPricing.format(monthCost))
-                            .font(.system(size: 9, weight: .medium, design: .monospaced))
-                            .foregroundStyle(.tertiary)
-                    }
-                    .help("Kosten diesen Monat (nur Remote-Aufrufe)")
-                }
-
+                
                 // Version info
                 Text("v2.0-FIXED")
                     .font(.system(size: 9, weight: .medium, design: .monospaced))
@@ -673,11 +663,12 @@ struct MenuBarView: View {
 
     private func workflowIconColor(_ type: WorkflowType) -> Color {
         switch type {
-        case .transcription: return .blue
+        case .transcription:      return .blue
         case .localTranscription: return .green
-        case .textImprover: return .purple
-        case .dampfAblassen: return .orange
-        case .emojiText: return .cyan
+        case .textImprover:       return .purple
+        case .dampfAblassen:      return .orange
+        case .emojiText:          return .cyan
+        case .translate:          return .teal
         }
     }
 }
@@ -902,6 +893,79 @@ struct DampfAblassenActiveView: View {
 
 struct EmojiTextActiveView: View {
     @Bindable var workflow: EmojiTextWorkflow
+
+    var body: some View {
+        VStack(spacing: 0) {
+            switch workflow.phase {
+            case .idle, .running:
+                if workflow.isRecording {
+                    recordingView(onStop: { workflow.stop() })
+                } else {
+                    VStack(spacing: 12) {
+                        Spacer().frame(height: 24)
+                        ProgressView()
+                            .scaleEffect(0.7)
+                            .controlSize(.small)
+                        if case .running(let msg) = workflow.phase {
+                            Text(msg)
+                                .font(.system(size: 11.5))
+                                .foregroundStyle(.secondary)
+                                .lineLimit(nil)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                        Spacer().frame(height: 24)
+                    }
+                }
+
+            case .done(let text):
+                autoPasteView(text: text)
+
+            case .error(let msg):
+                errorView(message: msg) {
+                    workflow.reset()
+                    workflow.start()
+                }
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.bottom, 16)
+    }
+
+    @ViewBuilder
+    private func recordingView(onStop: @escaping () -> Void) -> some View {
+        VStack(spacing: 16) {
+            Spacer().frame(height: 20)
+
+            WaveformView(audioLevel: workflow.audioLevel, isRecording: true)
+                .frame(height: 44)
+                .padding(.horizontal, 24)
+
+            // Monochrome stop button
+            Button(action: onStop) {
+                ZStack {
+                    Circle()
+                        .strokeBorder(.primary.opacity(0.2), lineWidth: 1.5)
+                        .frame(width: 44, height: 44)
+                    RoundedRectangle(cornerRadius: 3)
+                        .fill(.primary.opacity(0.7))
+                        .frame(width: 14, height: 14)
+                }
+            }
+            .buttonStyle(.plain)
+
+            Text("Ich h\u{00F6}re zu \u{2026} Klicke zum Stoppen.")
+                .font(.system(size: 11))
+                .foregroundStyle(.tertiary)
+
+            Spacer().frame(height: 8)
+        }
+    }
+}
+
+// MARK: - Translate Active View
+
+struct TranslateActiveView: View {
+    @Bindable var workflow: TranslateWorkflow
 
     var body: some View {
         VStack(spacing: 0) {

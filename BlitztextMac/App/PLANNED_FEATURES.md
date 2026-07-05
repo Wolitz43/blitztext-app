@@ -272,6 +272,93 @@ C) Beides (empfohlen)
 - Widget / Live Activity für macOS
 - iPad-Companion-App (gleiche Cloud-Services, eigene UI)
 
+
+---
+
+
+## Marktvergleich: Features kostenpflichtiger Konkurrenz-Apps
+### Stand: 03.07.2026
+### Verglichene Apps: SuperWhisper, Wispr Flow, MacWhisper, Cleft
+
+### 🟢 Bereits in Blitztext vorhanden
+- Sprache → Text (Transkription)
+- LLM-Verbesserung / Umformulierung
+- Lokale Modelle (WhisperKit + Apple Intelligence)
+- Hotkeys im Hintergrund
+- Auto-Paste in andere Apps
+- Kosten-Tracking
+- Mehrere Workflow-Modi
+
+---
+
+### 🔴 Fehlende Features – nach Kategorie
+
+#### 📝 Transkriptions-Qualität & Komfort
+
+| Feature | Apps die es haben | Aufwand |
+|---|---|---|
+| Automatische Interpunktion – Whisper gibt oft keinen Punkt am Satzende | SuperWhisper, MacWhisper | Leicht |
+| Sprache auto-erkennen – nicht manuell auf „de" festlegen | Alle | Leicht |
+| Mehrere Sprachen gleichzeitig – Code-Switching DE/EN | SuperWhisper Pro | Mittel |
+| Stille-Erkennung – Aufnahme stoppt automatisch nach X Sek. Pause | Wispr Flow, SuperWhisper | Mittel |
+
+#### 🖥️ System-Integration
+
+| Feature | Apps die es haben | Aufwand |
+|---|---|---|
+| Markierten Text verbessern – Cmd+C → LLM → Cmd+V | SuperWhisper, Wispr Flow | Mittel |
+| Cursor-Position erkennen – Text direkt an Cursor einfügen | Wispr Flow | Groß |
+| Kontext-aware – App erkennt fokussierte App, passt Stil an | Wispr Flow Pro | Groß |
+| Systemweite Textbausteine – Shortcuts für häufige Phrasen | TextExpander, Raycast | Mittel |
+
+#### 🎙️ Aufnahme & Audio
+
+| Feature | Apps die es haben | Aufwand |
+|---|---|---|
+| Mikrofon wählen – nicht immer Standard-Mikrofon | MacWhisper, SuperWhisper | Leicht |
+| Audio-Datei importieren – .mp3/.m4a transkribieren | MacWhisper | Mittel |
+| Rauschunterdrückung – vor dem Senden an Whisper | SuperWhisper Pro | Groß |
+| Live-Transkription – Text erscheint während man spricht | Wispr Flow | Groß |
+
+#### 📋 Verlauf & Verwaltung
+
+| Feature | Apps die es haben | Aufwand |
+|---|---|---|
+| Transkriptions-Verlauf – alle vergangenen Texte durchsuchen | MacWhisper, SuperWhisper | Leicht |
+| Favoriten / Pins – wichtige Transkriptionen markieren | MacWhisper | Leicht |
+| Export – Verlauf als .txt/.csv exportieren | MacWhisper | Leicht |
+| iCloud Sync – Verlauf geräteübergreifend | SuperWhisper Pro | Groß |
+
+#### 🤖 KI & Prompts
+
+| Feature | Apps die es haben | Aufwand |
+|---|---|---|
+| Custom Workflows – eigene System-Prompts per GUI erstellen | SuperWhisper, Wispr Flow | Mittel |
+| Prompt-Templates – vordefinierte Vorlagen (Meeting-Notizen, E-Mail etc.) | SuperWhisper | Mittel |
+| Übersetzung – Sprache X → Sprache Y | SuperWhisper, Wispr Flow | ✅ geplant (Feature 1) |
+| Zusammenfassung – langer Text → Kernpunkte | SuperWhisper | Mittel |
+| Formatierung – Output als Bullet-List, Tabelle etc. | SuperWhisper Pro | Mittel |
+
+#### 💰 Monetarisierung & Distribution
+
+| Feature | Apps die es haben | Aufwand |
+|---|---|---|
+| Freemium-Modell – X Minuten gratis, dann Abo | SuperWhisper, Wispr Flow | Groß |
+| Eigene API-Key-Option | MacWhisper | ✅ vorhanden |
+| App Store Distribution | SuperWhisper, MacWhisper | Groß |
+
+---
+
+### Top-5 Empfehlungen nach Aufwand/Nutzen
+
+| Prio | Feature | Warum |
+|---|---|---|
+| 1 | 🎤 Mikrofon-Auswahl | Leicht, sehr häufig nachgefragt |
+| 2 | ⏱️ Stille-Erkennung | Kein manuelles Stoppen mehr nötig, großer UX-Gewinn |
+| 3 | 📋 Transkriptions-Verlauf | Alle bisherigen Texte durchsuchbar |
+| 4 | ✏️ Markierten Text verbessern | Killer-Feature, das Wispr Flow groß gemacht hat |
+| 5 | 🌐 Sprache auto-erkennen | `language=auto` statt fix auf Deutsch, ein Einzeiler |
+
 ---
 
 
@@ -361,4 +448,68 @@ Cons:
 - Qualität bei komplexen Umformulierungen schlechter als GPT-4o-mini
 - Langsamere Antwortzeiten je nach Mac-Hardware und Modell
 - App muss prüfen ob Ollama überhaupt läuft (Fehlerbehandlung nötig)
+
+---
+
+
+## Plattform-Erweiterung: Windows-Version?
+### Bewertung: Sehr hoher Aufwand – aktuell nicht empfohlen
+
+### Das grundlegende Problem
+Blitztext ist tief in Apple-Technologien verankert. Fast jede Kernfunktion
+nutzt macOS-exklusive Frameworks – eine Windows-Version wäre faktisch
+ein kompletter Neubau:
+
+| Komponente | macOS (aktuell) | Windows-Äquivalent |
+|---|---|---|
+| UI | SwiftUI | – (Swift läuft nicht auf Windows) |
+| Menüleisten-Icon | NSStatusItem | System Tray (Win32 API) |
+| Audio-Aufnahme | AVFoundation | WASAPI / NAudio |
+| Lokale Transkription | WhisperKit | Whisper.net / faster-whisper |
+| Lokales LLM | Apple Intelligence | Ollama / llama.cpp |
+| Auto-Paste | CGEvent + Accessibility API | SendInput / UI Automation |
+| Keychain | Security.framework | Windows Credential Store |
+| Hotkeys global | NSEvent global monitor | RegisterHotKey Win32 |
+| App Support Pfade | ~/Library/Application Support | %APPDATA% |
+
+Swift läuft zwar offiziell auf Windows, aber SwiftUI und alle
+Apple-Frameworks fehlen vollständig → praktisch 100% Code-Neubau.
+
+### Optionen für eine Windows-Version
+
+#### Option A – Kompletter Neubau (C# + WinUI 3)
+- Aufwand: 3-6 Monate
+- Ergebnis: Native Windows-App, gute Performance
+- Problem: Zwei komplett separate Codebases, doppelter Wartungsaufwand dauerhaft
+
+#### Option B – Cross-Platform Framework (Electron / Flutter)
+- Aufwand: 2-4 Monate
+- Ergebnis: Eine Codebase für beide Plattformen
+- Problem: Electron-Apps sind schwer (~150 MB RAM nur für Shell),
+  Flutter hat keine gute macOS-Menüleisten-Integration,
+  Auto-Paste und globale Hotkeys unterscheiden sich stark
+
+#### Option C – Nur Backend teilen
+- Kernlogik (API-Calls, Settings, Pricing) als Swift Package auslagern,
+  UI jeweils nativ neu bauen
+- Aufwand: 4-8 Monate
+- Ergebnis: Sauberste Architektur, größter initialer Aufwand
+
+### Fazit
+Windows lohnt sich für ein kleines Team aktuell nicht:
+- Zielgruppe (Power-User, Sprache → Text) ist auf macOS deutlich größer
+- Konkurrenz (SuperWhisper, Wispr Flow) hat ebenfalls keine Windows-Version
+- Aufwand mindestens so groß wie die gesamte bisherige Blitztext-Entwicklung
+- Apple Intelligence und WhisperKit als USP existieren auf Windows gar nicht
+
+### Sinnvollere Alternativen zu Windows
+
+| Platform | Aufwand | Warum sinnvoller |
+|---|---|---|
+| iPadOS | Mittel | Swift/SwiftUI läuft direkt, ~80% Code wiederverwendbar |
+| iOS | Mittel | Gleiche Basis wie iPadOS |
+| Web-App | Groß | Erreicht Windows-Nutzer ohne native App, OpenAI API direkt im Browser |
+
+→ Eine Web-App wäre der pragmatischste Weg um Windows-Nutzer zu erreichen,
+  ohne eine native Windows-App bauen zu müssen.
 

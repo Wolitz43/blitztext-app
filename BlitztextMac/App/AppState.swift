@@ -16,7 +16,12 @@ final class AppState {
     private static let concealedPasteboardType = NSPasteboard.PasteboardType("org.nspasteboard.ConcealedType")
 
     var activeWorkflow: (any Workflow)?
-    var page: PopoverPage = .main
+    var page: PopoverPage = .main {
+        didSet {
+            guard oldValue != page else { return }
+            onPageChange?(page)
+        }
+    }
     var isPopoverShown = false
     var menuBarStatus: MenuBarStatus = .idle {
         didSet {
@@ -29,6 +34,7 @@ final class AppState {
     var localModelDownloadStatusText: String?
     var localModelDownloadErrorText: String?
     var onMenuBarStatusChange: ((MenuBarStatus) -> Void)?
+    var onPageChange: ((PopoverPage) -> Void)?
     private var activeLaunchSource: WorkflowLaunchSource = .manual
     private var activePasteTarget: PasteTarget?
     private var lastPopoverPasteTarget: PasteTarget?
@@ -52,6 +58,9 @@ final class AppState {
         didSet { saveSettings() }
     }
     var emojiTextSettings: EmojiTextSettings {
+        didSet { saveSettings() }
+    }
+    var translateSettings: TranslateSettings {
         didSet { saveSettings() }
     }
 
@@ -88,6 +97,7 @@ final class AppState {
         self.textImprovementSettings = Self.loadTextImprovementSettings()
         self.dampfAblassenSettings = Self.loadDampfAblassenSettings()
         self.emojiTextSettings = Self.loadEmojiTextSettings()
+        self.translateSettings = Self.loadTranslateSettings()
         refreshAccessibilityPermission()
         autoSelectFastLocalModelIfNeeded()
         prewarmLocalTranscriptionIfNeeded()
@@ -105,6 +115,9 @@ final class AppState {
             return name.isEmpty ? type.displayName : name
         case .emojiText:
             let name = emojiTextSettings.customName.trimmingCharacters(in: .whitespaces)
+            return name.isEmpty ? type.displayName : name
+        case .translate:
+            let name = translateSettings.customName.trimmingCharacters(in: .whitespaces)
             return name.isEmpty ? type.displayName : name
         default:
             return type.displayName
@@ -131,6 +144,15 @@ final class AppState {
                 return "Apple Intelligence nicht verfügbar."
             }
             return type.subtitle
+        case .translate:
+            let lang = translateSettings.targetLanguage.displayName
+            if appSettings.secureLocalModeEnabled {
+                if LocalLLMService.isAvailable {
+                    return "Lokal → \(lang)"
+                }
+                return "Apple Intelligence nicht verfügbar."
+            }
+            return "Sprache → \(lang)"
         }
     }
 
@@ -237,6 +259,19 @@ final class AppState {
             configureWorkflowHandlers(workflow)
             activeWorkflow = workflow
             workflow.start()
+
+        case .translate:
+            let workflow = TranslateWorkflow(
+                settings: translateSettings,
+                customTerms: textImprovementSettings.customTerms,
+                language: transcriptionSettings.language,
+                llmBackend: resolvedLLMBackend,
+                transcriptionBackend: appSettings.secureLocalModeEnabled ? .local : .remote,
+                localModelName: selectedLocalModelName
+            )
+            configureWorkflowHandlers(workflow)
+            activeWorkflow = workflow
+            workflow.start()
         }
 
         page = source.presentsWorkflowPage ? .workflow : .main
@@ -250,8 +285,7 @@ final class AppState {
             return appSettings.secureLocalModeEnabled
                 ? selectedLocalModelIsInstalled
                 : KeychainService.isConfigured
-        case .textImprover, .dampfAblassen, .emojiText:
-            // Verfügbar wenn: OpenAI konfiguriert ODER lokales Apple-LLM bereit
+        case .textImprover, .dampfAblassen, .emojiText, .translate:
             if appSettings.secureLocalModeEnabled {
                 return LocalLLMService.isAvailable
             }
@@ -449,7 +483,8 @@ final class AppState {
             transcription: transcriptionSettings,
             textImprovement: textImprovementSettings,
             dampfAblassen: dampfAblassenSettings,
-            emojiText: emojiTextSettings
+            emojiText: emojiTextSettings,
+            translate: translateSettings
         )
         if let data = try? JSONEncoder().encode(container) {
             try? data.write(to: Self.settingsURL)
@@ -474,6 +509,10 @@ final class AppState {
 
     private static func loadEmojiTextSettings() -> EmojiTextSettings {
         loadContainer()?.emojiText ?? EmojiTextSettings()
+    }
+
+    private static func loadTranslateSettings() -> TranslateSettings {
+        loadContainer()?.translate ?? TranslateSettings()
     }
 
     private static func loadContainer() -> SettingsContainer? {
@@ -722,6 +761,7 @@ private struct SettingsContainer: Codable {
     var textImprovement: TextImprovementSettings
     var dampfAblassen: DampfAblassenSettings?
     var emojiText: EmojiTextSettings?
+    var translate: TranslateSettings?
 }
 
 // MARK: - Notification for Popover Dismissal

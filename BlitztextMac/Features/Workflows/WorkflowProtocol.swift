@@ -8,6 +8,7 @@ enum WorkflowType: String, CaseIterable, Identifiable, Codable {
     case textImprover
     case dampfAblassen
     case emojiText
+    case translate
 
     var id: String { rawValue }
 
@@ -17,51 +18,56 @@ enum WorkflowType: String, CaseIterable, Identifiable, Codable {
 
     var displayName: String {
         switch self {
-        case .transcription: return "Blitztext"
+        case .transcription:     return "Blitztext"
         case .localTranscription: return "Blitztext Lokal"
-        case .textImprover: return "Blitztext+"
-        case .dampfAblassen: return "Blitztext $%&!"
-        case .emojiText: return "Blitztext :)"
+        case .textImprover:      return "Blitztext+"
+        case .dampfAblassen:     return "Blitztext $%&!"
+        case .emojiText:         return "Blitztext :)"
+        case .translate:         return "Blitztext 🌍"
         }
     }
 
     var icon: String {
         switch self {
-        case .transcription: return "mic.fill"
+        case .transcription:     return "mic.fill"
         case .localTranscription: return "lock.shield.fill"
-        case .textImprover: return "text.badge.checkmark"
-        case .dampfAblassen: return "flame.fill"
-        case .emojiText: return "face.smiling"
+        case .textImprover:      return "text.badge.checkmark"
+        case .dampfAblassen:     return "flame.fill"
+        case .emojiText:         return "face.smiling"
+        case .translate:         return "globe"
         }
     }
 
     var subtitle: String {
         switch self {
-        case .transcription: return "Sprache rein. Text raus."
+        case .transcription:     return "Sprache rein. Text raus."
         case .localTranscription: return "Nur lokal. Kein Server."
-        case .textImprover: return "Geschrieben sprechen."
-        case .dampfAblassen: return "Frust rein. Entspannt raus."
-        case .emojiText: return "Text rein. Emojis dazu."
+        case .textImprover:      return "Geschrieben sprechen."
+        case .dampfAblassen:     return "Frust rein. Entspannt raus."
+        case .emojiText:         return "Text rein. Emojis dazu."
+        case .translate:         return "Deutsch rein. Übersetzt raus."
         }
     }
 
     var hotkeyLabel: String {
         switch self {
-        case .transcription: return "fn + Shift"
+        case .transcription:     return "fn + Shift"
         case .localTranscription: return "fn + Shift + Ctrl"
-        case .textImprover: return "fn + Control"
-        case .dampfAblassen: return "fn + Option"
-        case .emojiText: return "fn + Cmd"
+        case .textImprover:      return "fn + Control"
+        case .dampfAblassen:     return "fn + Option"
+        case .emojiText:         return "fn + Cmd"
+        case .translate:         return "fn + T"
         }
     }
 
     var accentColor: String {
         switch self {
-        case .transcription: return "blue"
+        case .transcription:     return "blue"
         case .localTranscription: return "green"
-        case .textImprover: return "purple"
-        case .dampfAblassen: return "orange"
-        case .emojiText: return "cyan"
+        case .textImprover:      return "purple"
+        case .dampfAblassen:     return "orange"
+        case .emojiText:         return "cyan"
+        case .translate:         return "teal"
         }
     }
 }

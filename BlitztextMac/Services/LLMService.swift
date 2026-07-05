@@ -174,6 +174,29 @@ enum LLMService {
         }
     }
 
+    static func translate(
+        text: String,
+        systemPrompt: String,
+        model: RewriteModel = .fastEdit,
+        backend: LLMBackend = .remote
+    ) async throws -> (String, LLMUsageInfo) {
+        switch backend {
+        case .remote:
+            return try await complete(
+                text: text,
+                systemPrompt: systemPrompt,
+                model: model,
+                temperature: 0.2
+            )
+        case .local:
+            let result = try await LocalLLMService.improve(
+                text: text,
+                systemPrompt: systemPrompt
+            )
+            return (result, LLMUsageInfo(model: "apple-intelligence", promptTokens: 0, completionTokens: 0, backend: .local))
+        }
+    }
+
     private static func complete(
         text: String,
         systemPrompt: String,

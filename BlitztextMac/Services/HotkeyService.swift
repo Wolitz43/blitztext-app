@@ -51,10 +51,13 @@ final class HotkeyService {
             return event
         }
         // Escape key monitor for toggle mode
+        // Also handles fn + T (keyCode 17) for translate workflow
         keyMonitor = NSEvent.addGlobalMonitorForEvents(matching: .keyDown) { [weak self] event in
             Task { @MainActor in
                 if event.keyCode == 53 { // Escape
                     self?.handleEscape()
+                } else if event.keyCode == 17 && event.modifierFlags.contains(.function) { // fn + T
+                    self?.handleFnT()
                 }
             }
         }
@@ -127,5 +130,12 @@ final class HotkeyService {
     private func handleEscape() {
         activeCombo = nil
         onHotkeyEvent?(.cancel)
+    }
+
+    private func handleFnT() {
+        // fn + T ist ein keyDown-Event, kein flagsChanged.
+        // Wir senden .down und sofort .up (kein Hold-Modus nötig da Taste losgelassen).
+        onHotkeyEvent?(.down(.translate))
+        onHotkeyEvent?(.up(.translate))
     }
 }

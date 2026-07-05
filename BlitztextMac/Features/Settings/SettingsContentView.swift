@@ -769,6 +769,37 @@ struct CustomizeSettingsView: View {
                 }
             }
 
+            // MARK: Blitztext 🌍
+            VStack(alignment: .leading, spacing: 10) {
+                SectionLabel(text: "Blitztext 🌍")
+
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Zielsprache")
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+
+                    Picker("", selection: $appState.translateSettings.targetLanguage) {
+                        ForEach(TranslateSettings.TargetLanguage.allCases) { lang in
+                            Text(lang.displayName).tag(lang)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                }
+
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Ton")
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+
+                    Picker("", selection: $appState.translateSettings.tone) {
+                        ForEach(TranslateSettings.TranslateTone.allCases) { tone in
+                            Text(tone.displayName).tag(tone)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                }
+            }
+
             // MARK: Eigennamen
             VStack(alignment: .leading, spacing: 10) {
                 SectionLabel(text: "Eigennamen")

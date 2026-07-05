@@ -57,6 +57,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         appState.onMenuBarStatusChange = { [weak self] status in
             self?.menuBarStatusController.update(to: status)
         }
+        appState.onPageChange = { [weak self] page in
+            self?.updatePopoverSize(for: page)
+        }
         appState.hotkeyService.start()
 
         NotificationCenter.default.addObserver(
@@ -194,6 +197,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
         appState.isPopoverShown = true
         NSApp.activate(ignoringOtherApps: true)
+    }
+
+    private func updatePopoverSize(for page: PopoverPage) {
+        let height: CGFloat = page == .settings ? 580 : 480
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = 0.2
+            popover.contentSize = NSSize(width: 340, height: height)
+        }
     }
 
     nonisolated func popoverDidClose(_ notification: Notification) {
