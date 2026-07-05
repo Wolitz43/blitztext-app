@@ -4,6 +4,14 @@
 ## ✅ Erledigt (05.07.2026)
 - Übersetzung als globaler Toggle auf die 4 bestehenden Workflows (statt eigener 5. Menüeintrag)
 
+### Bekannte Einschränkung (später separat angehen)
+Sicherer Lokaler Modus + Apple Intelligence nicht verfügbar + kein API-Key +
+Transkription + Übersetzungs-Toggle an: Transkription ist trotzdem
+"verfügbar" (braucht kein LLM), die anschließende Übersetzung schlägt aber
+mangels LLM-Backend lautlos fehl und der unübersetzte Text wird ohne
+Hinweis eingefügt. Kein Datenverlust, nur fehlendes Feedback. Gefunden im
+finalen Review von docs/superpowers/plans/2026-07-05-translate-global-toggle.md.
+
 ## ✅ Erledigt (03.07.2026)
 - Kein Auto-Paste wenn Workflow über Popover gestartet wird (nur bei Hotkey)
 - Usage-Tracker: Token-Verbrauch und API-Kosten werden getrackt und angezeigt
