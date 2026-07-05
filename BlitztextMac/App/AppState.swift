@@ -60,10 +60,6 @@ final class AppState {
     var emojiTextSettings: EmojiTextSettings {
         didSet { saveSettings() }
     }
-    var translateSettings: TranslateSettings {
-        didSet { saveSettings() }
-    }
-
     // Hotkeys
     let hotkeyService = HotkeyService()
 
@@ -97,7 +93,6 @@ final class AppState {
         self.textImprovementSettings = Self.loadTextImprovementSettings()
         self.dampfAblassenSettings = Self.loadDampfAblassenSettings()
         self.emojiTextSettings = Self.loadEmojiTextSettings()
-        self.translateSettings = Self.loadTranslateSettings()
         refreshAccessibilityPermission()
         autoSelectFastLocalModelIfNeeded()
         prewarmLocalTranscriptionIfNeeded()
@@ -116,15 +111,19 @@ final class AppState {
         case .emojiText:
             let name = emojiTextSettings.customName.trimmingCharacters(in: .whitespaces)
             return name.isEmpty ? type.displayName : name
-        case .translate:
-            let name = translateSettings.customName.trimmingCharacters(in: .whitespaces)
-            return name.isEmpty ? type.displayName : name
         default:
             return type.displayName
         }
     }
 
     func workflowSubtitle(for type: WorkflowType) -> String {
+        let base = baseWorkflowSubtitle(for: type)
+        guard appSettings.translationEnabled else { return base }
+        let lang = translationStepSettings(for: type).targetLanguage.displayName
+        return "\(base) → \(lang)"
+    }
+
+    private func baseWorkflowSubtitle(for type: WorkflowType) -> String {
         switch type {
         case .transcription:
             if appSettings.secureLocalModeEnabled {
@@ -144,15 +143,19 @@ final class AppState {
                 return "Apple Intelligence nicht verfügbar."
             }
             return type.subtitle
-        case .translate:
-            let lang = translateSettings.targetLanguage.displayName
-            if appSettings.secureLocalModeEnabled {
-                if LocalLLMService.isAvailable {
-                    return "Lokal → \(lang)"
-                }
-                return "Apple Intelligence nicht verfügbar."
-            }
-            return "Sprache → \(lang)"
+        }
+    }
+
+    private func translationStepSettings(for type: WorkflowType) -> TranslationStepSettings {
+        switch type {
+        case .transcription, .localTranscription:
+            return transcriptionSettings.translation
+        case .textImprover:
+            return textImprovementSettings.translation
+        case .dampfAblassen:
+            return dampfAblassenSettings.translation
+        case .emojiText:
+            return emojiTextSettings.translation
         }
     }
 
@@ -198,44 +201,36 @@ final class AppState {
         activeLaunchSource = source
         activePasteTarget = capturePasteTarget(for: source)
 
+        let builtWorkflow: any Workflow
         switch type {
         case .transcription:
-            let workflow = TranscriptionWorkflow(
+            builtWorkflow = TranscriptionWorkflow(
                 customTerms: textImprovementSettings.customTerms,
                 language: transcriptionSettings.language,
                 backend: appSettings.secureLocalModeEnabled ? .local : .remote,
                 localModelName: selectedLocalModelName
             )
-            configureWorkflowHandlers(workflow)
-            activeWorkflow = workflow
-            workflow.start()
 
         case .localTranscription:
-            let workflow = TranscriptionWorkflow(
+            builtWorkflow = TranscriptionWorkflow(
                 type: .localTranscription,
                 customTerms: textImprovementSettings.customTerms,
                 language: transcriptionSettings.language,
                 backend: .local,
                 localModelName: selectedLocalModelName
             )
-            configureWorkflowHandlers(workflow)
-            activeWorkflow = workflow
-            workflow.start()
 
         case .textImprover:
-            let workflow = TextImprovementWorkflow(
+            builtWorkflow = TextImprovementWorkflow(
                 settings: textImprovementSettings,
                 language: transcriptionSettings.language,
                 llmBackend: resolvedLLMBackend,
                 transcriptionBackend: appSettings.secureLocalModeEnabled ? .local : .remote,
                 localModelName: selectedLocalModelName
             )
-            configureWorkflowHandlers(workflow)
-            activeWorkflow = workflow
-            workflow.start()
 
         case .dampfAblassen:
-            let workflow = DampfAblassenWorkflow(
+            builtWorkflow = DampfAblassenWorkflow(
                 settings: dampfAblassenSettings,
                 customTerms: textImprovementSettings.customTerms,
                 language: transcriptionSettings.language,
@@ -243,12 +238,9 @@ final class AppState {
                 transcriptionBackend: appSettings.secureLocalModeEnabled ? .local : .remote,
                 localModelName: selectedLocalModelName
             )
-            configureWorkflowHandlers(workflow)
-            activeWorkflow = workflow
-            workflow.start()
 
         case .emojiText:
-            let workflow = EmojiTextWorkflow(
+            builtWorkflow = EmojiTextWorkflow(
                 settings: emojiTextSettings,
                 customTerms: textImprovementSettings.customTerms,
                 language: transcriptionSettings.language,
@@ -256,23 +248,22 @@ final class AppState {
                 transcriptionBackend: appSettings.secureLocalModeEnabled ? .local : .remote,
                 localModelName: selectedLocalModelName
             )
-            configureWorkflowHandlers(workflow)
-            activeWorkflow = workflow
-            workflow.start()
-
-        case .translate:
-            let workflow = TranslateWorkflow(
-                settings: translateSettings,
-                customTerms: textImprovementSettings.customTerms,
-                language: transcriptionSettings.language,
-                llmBackend: resolvedLLMBackend,
-                transcriptionBackend: appSettings.secureLocalModeEnabled ? .local : .remote,
-                localModelName: selectedLocalModelName
-            )
-            configureWorkflowHandlers(workflow)
-            activeWorkflow = workflow
-            workflow.start()
         }
+
+        let workflow: any Workflow
+        if appSettings.translationEnabled {
+            workflow = TranslatingWorkflow(
+                inner: builtWorkflow,
+                settings: translationStepSettings(for: type),
+                llmBackend: resolvedLLMBackend
+            )
+        } else {
+            workflow = builtWorkflow
+        }
+
+        configureWorkflowHandlers(workflow)
+        activeWorkflow = workflow
+        workflow.start()
 
         page = source.presentsWorkflowPage ? .workflow : .main
     }
@@ -285,7 +276,7 @@ final class AppState {
             return appSettings.secureLocalModeEnabled
                 ? selectedLocalModelIsInstalled
                 : KeychainService.isConfigured
-        case .textImprover, .dampfAblassen, .emojiText, .translate:
+        case .textImprover, .dampfAblassen, .emojiText:
             if appSettings.secureLocalModeEnabled {
                 return LocalLLMService.isAvailable
             }
@@ -483,8 +474,7 @@ final class AppState {
             transcription: transcriptionSettings,
             textImprovement: textImprovementSettings,
             dampfAblassen: dampfAblassenSettings,
-            emojiText: emojiTextSettings,
-            translate: translateSettings
+            emojiText: emojiTextSettings
         )
         if let data = try? JSONEncoder().encode(container) {
             try? data.write(to: Self.settingsURL)
@@ -509,10 +499,6 @@ final class AppState {
 
     private static func loadEmojiTextSettings() -> EmojiTextSettings {
         loadContainer()?.emojiText ?? EmojiTextSettings()
-    }
-
-    private static func loadTranslateSettings() -> TranslateSettings {
-        loadContainer()?.translate ?? TranslateSettings()
     }
 
     private static func loadContainer() -> SettingsContainer? {
@@ -576,7 +562,7 @@ final class AppState {
         }
     }
 
-    private func configureWorkflowHandlers<T: Workflow>(_ workflow: T) {
+    private func configureWorkflowHandlers(_ workflow: any Workflow) {
         workflow.onOutput = { [weak self] text in
             self?.handleWorkflowOutput(text)
         }
@@ -761,7 +747,6 @@ private struct SettingsContainer: Codable {
     var textImprovement: TextImprovementSettings
     var dampfAblassen: DampfAblassenSettings?
     var emojiText: EmojiTextSettings?
-    var translate: TranslateSettings?
 }
 
 // MARK: - Notification for Popover Dismissal
