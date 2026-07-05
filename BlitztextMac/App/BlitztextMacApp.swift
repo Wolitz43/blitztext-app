@@ -54,6 +54,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         appState.hotkeyService.onHotkeyEvent = { [weak self] event in
             self?.handleHotkeyEvent(event)
         }
+        appState.hotkeyService.onToggleTranslation = { [weak self] in
+            self?.appState.appSettings.translationEnabled.toggle()
+        }
         appState.onMenuBarStatusChange = { [weak self] status in
             self?.menuBarStatusController.update(to: status)
         }

@@ -37,6 +37,7 @@ final class HotkeyService {
     private var activeCombo: WorkflowType?  // Which combo is currently held
 
     var onHotkeyEvent: ((HotkeyEvent) -> Void)?
+    var onToggleTranslation: (() -> Void)?
 
     func start() {
         globalMonitor = NSEvent.addGlobalMonitorForEvents(matching: .flagsChanged) { [weak self] event in
@@ -51,7 +52,7 @@ final class HotkeyService {
             return event
         }
         // Escape key monitor for toggle mode
-        // Also handles fn + T (keyCode 17) for translate workflow
+        // Also handles fn + T (keyCode 17) to toggle translation on/off
         keyMonitor = NSEvent.addGlobalMonitorForEvents(matching: .keyDown) { [weak self] event in
             Task { @MainActor in
                 if event.keyCode == 53 { // Escape
@@ -133,9 +134,6 @@ final class HotkeyService {
     }
 
     private func handleFnT() {
-        // fn + T ist ein keyDown-Event, kein flagsChanged.
-        // Wir senden .down und sofort .up (kein Hold-Modus nötig da Taste losgelassen).
-        onHotkeyEvent?(.down(.translate))
-        onHotkeyEvent?(.up(.translate))
+        onToggleTranslation?()
     }
 }
