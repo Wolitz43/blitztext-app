@@ -1,5 +1,8 @@
 # Blitztext – Geplante Features
-# Stand: 03.07.2026
+# Stand: 05.07.2026
+
+## ✅ Erledigt (05.07.2026)
+- Übersetzung als globaler Toggle auf die 4 bestehenden Workflows (statt eigener 5. Menüeintrag)
 
 ## ✅ Erledigt (03.07.2026)
 - Kein Auto-Paste wenn Workflow über Popover gestartet wird (nur bei Hotkey)
