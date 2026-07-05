@@ -40,6 +40,7 @@ final class TranslatingWorkflow: Workflow {
     }
 
     func stop() {
+        translationTask?.cancel()
         inner.stop()
     }
 
