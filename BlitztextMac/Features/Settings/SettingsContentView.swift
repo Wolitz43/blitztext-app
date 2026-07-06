@@ -674,7 +674,20 @@ struct CustomizeSettingsView: View {
                 Toggle("Ausgabe übersetzen", isOn: $appState.appSettings.translationEnabled)
                     .toggleStyle(.switch)
 
-                Text("Wenn aktiv, wird die Ausgabe jedes Workflows zusätzlich in die unten je Workflow eingestellte Zielsprache übersetzt.")
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Zielsprache")
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+
+                    Picker("", selection: $appState.appSettings.translationTargetLanguage) {
+                        ForEach(TargetLanguage.selectable) { lang in
+                            Text(lang.displayName).tag(lang)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                }
+
+                Text("Wenn aktiv, wird die Ausgabe jedes Workflows zusätzlich in die hier eingestellte Zielsprache übersetzt.")
                     .font(.system(size: 10.5))
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -913,13 +926,6 @@ private struct TranslationStepSettingsView: View {
             Text("Übersetzung")
                 .font(.system(size: 11))
                 .foregroundStyle(.secondary)
-
-            Picker("", selection: $settings.targetLanguage) {
-                ForEach(TargetLanguage.selectable) { lang in
-                    Text(lang.displayName).tag(lang)
-                }
-            }
-            .pickerStyle(.segmented)
 
             Picker("", selection: $settings.tone) {
                 ForEach(TranslateTone.allCases) { tone in

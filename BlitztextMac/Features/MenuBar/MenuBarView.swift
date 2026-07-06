@@ -237,6 +237,16 @@ struct MenuBarView: View {
 
             Spacer(minLength: 4)
 
+            Picker("", selection: $appState.appSettings.translationTargetLanguage) {
+                ForEach(TargetLanguage.selectable) { lang in
+                    Text(lang.displayName).tag(lang)
+                }
+            }
+            .labelsHidden()
+            .pickerStyle(.menu)
+            .controlSize(.small)
+            .fixedSize()
+
             Toggle("", isOn: $appState.appSettings.translationEnabled)
                 .labelsHidden()
                 .toggleStyle(.switch)
