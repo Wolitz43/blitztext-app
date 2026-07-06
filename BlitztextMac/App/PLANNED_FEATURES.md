@@ -1,5 +1,57 @@
 # Blitztext – Geplante Features
-# Stand: 05.07.2026
+# Stand: 06.07.2026
+
+## 🔄 Handoff-Status (Stand 06.07.2026) — für nahtlose Fortsetzung durch eine andere KI-Session
+
+**Kontext:** Die Übersetzungs-Feature (siehe „✅ Erledigt" unten) wurde in
+einer vorherigen Session per `superpowers` Skills (brainstorming →
+writing-plans → subagent-driven-development) komplett umgesetzt, reviewed,
+gemerged und gepusht. Nichts ist mehr offen im Code. Referenzdokumente:
+- Spec: `docs/superpowers/specs/2026-07-05-translate-global-toggle-design.md`
+- Plan: `docs/superpowers/plans/2026-07-05-translate-global-toggle.md`
+  (8 Tasks, alle umgesetzt + reviewed, siehe Commit-Historie `83f02d5..f7b50a8`
+  auf `main`)
+
+**Was noch fehlt — die einzige offene Aufgabe:** Der **manuelle Smoke-Test**
+wurde noch nie von einem Menschen durchgeführt. Automatisiert geprüft ist nur:
+Build erfolgreich (`Blitztext (Debug)`-Scheme), App startet und läuft ~12
+Sekunden stabil ohne Absturz. **Nicht** geprüft: tatsächliches
+UI-Verhalten (Popover-Interaktion, Mikrofon-Aufnahme, Berechtigungsdialoge)
+— das braucht echte Bedienung durch einen Menschen, keine KI-Session kann
+das in dieser Umgebung automatisiert nachstellen.
+
+**Checkliste für den manuellen Test** (aus dem Plan, Task 8, Schritt 3):
+1. Popover öffnen → „Übersetzen"-Toggle sichtbar, standardmäßig aus.
+2. Toggle im Popover an/aus schalten → Einstellungen-Tab „Anpassen" zeigt
+   denselben Zustand.
+3. Für jeden der 4 Workflows: Toggle an, Zielsprache in den Settings
+   einstellen (z.B. Englisch), Aufnahme starten → „Wird übersetzt ..."
+   erscheint nach der Vorverarbeitung, eingefügter Text ist übersetzt.
+   Toggle aus → Text bleibt Deutsch.
+4. Für zwei verschiedene Workflows unterschiedliche Zielsprachen einstellen
+   → jeweils die richtige Sprache wird verwendet.
+5. `fn+T` drücken → Toggle wechselt sichtbar im Popover, kein Workflow startet.
+6. Bestehende `settings.json` (falls vorhanden, unter
+   `~/Library/Application Support/Blitztext Dev/`) vor dem ersten Start
+   sichern, App starten → keine Einstellungen gehen verloren.
+7. Übersetzung absichtlich fehlschlagen lassen (z.B. WLAN aus bei
+   Remote-Backend) → Originaltext wird trotzdem eingefügt, kein Absturz.
+8. Verbrauch-Tab in den Settings zeigt einen zusätzlichen Eintrag für den
+   Übersetzungs-Call.
+
+**Falls das jemand (Mensch oder KI-Session mit UI-Automation-Tooling)
+durchführt:** Ergebnis bitte hier in diesem Abschnitt vermerken (Datum +
+Ergebnis je Punkt), damit der Status aktuell bleibt. Wenn alle 8 Punkte
+grün sind, kann dieser ganze „Handoff-Status"-Abschnitt gelöscht werden.
+
+**Bekannte, bewusst nicht behobene Einschränkung:** siehe Abschnitt direkt
+unten („Bekannte Einschränkung").
+
+**Wichtige Falle beim Bauen:** siehe „⚠️ Achtung: `.xcodeproj` ist gitignored
+und xcodegen-generiert" weiter unten in diesem Dokument, bevor `xcodegen
+generate` oder ähnliche Projekt-Regenerierung ausgeführt wird.
+
+---
 
 ## ✅ Erledigt (05.07.2026)
 - Übersetzung als globaler Toggle auf die 4 bestehenden Workflows (statt eigener 5. Menüeintrag)
