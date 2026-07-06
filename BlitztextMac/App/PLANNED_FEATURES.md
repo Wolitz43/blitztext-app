@@ -24,12 +24,15 @@ das in dieser Umgebung automatisiert nachstellen.
 1. Popover öffnen → „Übersetzen"-Toggle sichtbar, standardmäßig aus.
 2. Toggle im Popover an/aus schalten → Einstellungen-Tab „Anpassen" zeigt
    denselben Zustand.
-3. Für jeden der 4 Workflows: Toggle an, Zielsprache in den Settings
-   einstellen (z.B. Englisch), Aufnahme starten → „Wird übersetzt ..."
-   erscheint nach der Vorverarbeitung, eingefügter Text ist übersetzt.
-   Toggle aus → Text bleibt Deutsch.
-4. Für zwei verschiedene Workflows unterschiedliche Zielsprachen einstellen
-   → jeweils die richtige Sprache wird verwendet.
+3. Für jeden der 4 Workflows: Toggle an, **globale** Zielsprache einstellen
+   (Settings-Tab „Anpassen" oder Dropdown im Popover, z.B. Englisch),
+   Aufnahme starten → „Wird übersetzt ..." erscheint nach der
+   Vorverarbeitung, eingefügter Text ist übersetzt. Toggle aus → Text
+   bleibt Deutsch. (Seit 06.07.2026 ist die Zielsprache global für alle
+   4 Workflows; Ton/Kontext bleiben pro Workflow.)
+4. Globale Zielsprache wechseln (im Popover UND in den Settings — beide
+   müssen synchron denselben Wert zeigen) → nächster Lauf jedes Workflows
+   übersetzt in die neue Sprache; Ton/Kontext pro Workflow wirken weiterhin.
 5. `fn+T` drücken → Toggle wechselt sichtbar im Popover, kein Workflow startet.
 6. Bestehende `settings.json` (falls vorhanden, unter
    `~/Library/Application Support/Blitztext Dev/`) vor dem ersten Start
@@ -52,6 +55,12 @@ und xcodegen-generiert" weiter unten in diesem Dokument, bevor `xcodegen
 generate` oder ähnliche Projekt-Regenerierung ausgeführt wird.
 
 ---
+
+## ✅ Erledigt (06.07.2026)
+- Zielsprache der Übersetzung ist jetzt **global** (einmal für alle 4 Workflows,
+  einstellbar in Settings „Anpassen" + Popover-Dropdown) statt pro Workflow;
+  Ton/Kontext bleiben pro Workflow. Spec:
+  `docs/superpowers/specs/2026-07-06-global-translation-target-language-design.md`
 
 ## ✅ Erledigt (05.07.2026)
 - Übersetzung als globaler Toggle auf die 4 bestehenden Workflows (statt eigener 5. Menüeintrag)
