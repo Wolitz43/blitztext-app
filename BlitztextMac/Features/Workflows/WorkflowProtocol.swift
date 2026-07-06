@@ -126,6 +126,7 @@ struct AppSettings: Codable {
     var selectedLocalTranscriptionModelName: String = LocalTranscriptionService.recommendedFastModelName
     var hasAutoSelectedFastLocalModel: Bool = false
     var translationEnabled: Bool = false
+    var translationTargetLanguage: TargetLanguage = .english
 
     init(
         hotkeyMode: HotkeyMode = .hold,
@@ -133,7 +134,8 @@ struct AppSettings: Codable {
         secureLocalModeEnabled: Bool = false,
         selectedLocalTranscriptionModelName: String = LocalTranscriptionService.recommendedFastModelName,
         hasAutoSelectedFastLocalModel: Bool = false,
-        translationEnabled: Bool = false
+        translationEnabled: Bool = false,
+        translationTargetLanguage: TargetLanguage = .english
     ) {
         self.hotkeyMode = hotkeyMode
         self.hasSeenOnboarding = hasSeenOnboarding
@@ -141,6 +143,7 @@ struct AppSettings: Codable {
         self.selectedLocalTranscriptionModelName = selectedLocalTranscriptionModelName
         self.hasAutoSelectedFastLocalModel = hasAutoSelectedFastLocalModel
         self.translationEnabled = translationEnabled
+        self.translationTargetLanguage = translationTargetLanguage
     }
 
     enum CodingKeys: String, CodingKey {
@@ -150,6 +153,7 @@ struct AppSettings: Codable {
         case selectedLocalTranscriptionModelName
         case hasAutoSelectedFastLocalModel
         case translationEnabled
+        case translationTargetLanguage
     }
 
     init(from decoder: Decoder) throws {
@@ -166,6 +170,10 @@ struct AppSettings: Codable {
             forKey: .hasAutoSelectedFastLocalModel
         ) ?? false
         translationEnabled = try container.decodeIfPresent(Bool.self, forKey: .translationEnabled) ?? false
+        translationTargetLanguage = try container.decodeIfPresent(
+            TargetLanguage.self,
+            forKey: .translationTargetLanguage
+        ) ?? .english
     }
 }
 
