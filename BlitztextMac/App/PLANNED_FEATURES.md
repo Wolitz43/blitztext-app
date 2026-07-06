@@ -50,6 +50,11 @@ grün sind, kann dieser ganze „Handoff-Status"-Abschnitt gelöscht werden.
 **Bekannte, bewusst nicht behobene Einschränkung:** siehe Abschnitt direkt
 unten („Bekannte Einschränkung").
 
+**Downgrade-Warnung:** Nicht auf einen Build vor dem 06.07.2026 zurückwechseln,
+nachdem die neue Version einmal lief — deren `settings.json` (ohne
+`translation.targetLanguage`) kann der alte Decoder nicht lesen, und alle
+Einstellungen fallen auf Defaults zurück.
+
 **Wichtige Falle beim Bauen:** siehe „⚠️ Achtung: `.xcodeproj` ist gitignored
 und xcodegen-generiert" weiter unten in diesem Dokument, bevor `xcodegen
 generate` oder ähnliche Projekt-Regenerierung ausgeführt wird.

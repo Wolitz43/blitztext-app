@@ -246,6 +246,7 @@ struct MenuBarView: View {
             .pickerStyle(.menu)
             .controlSize(.small)
             .fixedSize()
+            .accessibilityLabel("Zielsprache")
 
             Toggle("", isOn: $appState.appSettings.translationEnabled)
                 .labelsHidden()
