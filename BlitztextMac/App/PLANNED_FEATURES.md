@@ -77,104 +77,55 @@ fi
 2. **Cmd+B**
 3. App ist automatisch in `/Applications` aktualisiert und startbereit
 
+### ⚠️ Achtung: `.xcodeproj` ist gitignored und xcodegen-generiert
+`BlitztextMac.xcodeproj` steht **nicht** unter Versionskontrolle (`.gitignore`:
+`*.xcodeproj/`) und wird aus `project.yml` per `xcodegen generate` erzeugt.
+**Die beiden Schemes `Blitztext (Debug)`/`Blitztext (Release)` inkl. des
+Release-Copy-Scripts oben und der Debug-Bundle-Name-Override
+(„Blitztext Dev") stehen NICHT in `project.yml` — sie wurden manuell in
+Xcode angelegt.**
+
+Führt man `xcodegen generate` im Haupt-Checkout aus, wird das komplette
+`project.pbxproj` neu geschrieben und diese komplette manuelle Konfiguration
+geht ersatzlos verloren (nur der generische Default-Scheme bleibt übrig).
+Das ist am 06.07.2026 passiert und musste per Time-Machine-Snapshot
+wiederhergestellt werden.
+
+**Faustregel:** `xcodegen generate` nur in einem frischen Checkout/Worktree
+ausführen, der ohnehin keine der beiden custom Schemes hat (z.B. um dort
+grundsätzlich bauen zu können) — niemals im Haupt-Checkout. Fehlt in einem
+frischen Checkout nach `git merge`/`pull` eine neue Datei im Build
+(„Build input files cannot be found" oder „Cannot find X in scope" trotz
+vorhandener Datei), reicht es, die Datei manuell in Xcode per Drag&Drop zum
+Target hinzuzufügen — kein `xcodegen generate` im Haupt-Checkout.
+
 
 ---
 
 
-## Feature 1: Übersetzer-Workflow „Blitztext 🌍"
+## Feature 1: Übersetzung (✅ umgesetzt — anderes Design als ursprünglich hier geplant)
 
-### Konzept
-Deutsch sprechen → Transkription → LLM übersetzt → Englischer Text wird eingefügt.
-Unterstützt beide Backends (Apple Intelligence lokal / OpenAI remote).
+Dieser Abschnitt beschrieb ursprünglich einen eigenen 5. Menüeintrag „Blitztext 🌍"
+(`TranslateWorkflow.swift`/`TranslateSettings.swift`, `WorkflowType.translate`).
+Dieser Ansatz wurde verworfen. Umgesetzt ist stattdessen ein **globaler
+Übersetzungs-Toggle**, der als zusätzlicher Schritt auf die 4 bestehenden
+Workflows (Transkription, Blitztext+, $%&!, :)) wirkt — siehe
+„✅ Erledigt (05.07.2026)" oben.
 
-### Flow
-Phase 1: 🎤 Audio aufnehmen
-Phase 2: 📝 Transkription (WhisperKit lokal ODER Whisper API)
-Phase 3: 🌍 Übersetzung (Apple Intelligence lokal ODER OpenAI gpt-4o-mini)
-Phase 4: 📋 Einfügen (Paste)
+Details zur tatsächlichen Umsetzung:
+- Spec: `docs/superpowers/specs/2026-07-05-translate-global-toggle-design.md`
+- Plan: `docs/superpowers/plans/2026-07-05-translate-global-toggle.md`
+- Architektur: `TranslatingWorkflow.swift` (Decorator um die 4 Workflows),
+  `TranslationStepSettings`/`TargetLanguage`/`TranslateTone` in
+  `WorkflowProtocol.swift`, globaler Toggle `AppSettings.translationEnabled`.
 
-### Neue Dateien
-- TranslateWorkflow.swift     → Kopie von TextImprovementWorkflow, Phase 2 = Übersetzung
-- TranslateSettings.swift     → Zielsprache, Ton (formal/casual), Kontext
-
-### TranslateSettings (geplant)
-```swift
-struct TranslateSettings: Codable {
-    var customName: String = ""
-    var targetLanguage: TargetLanguage = .english
-    var tone: TranslateTone = .neutral
-    var context: String = ""
-
-    enum TargetLanguage: String, Codable, CaseIterable {
-        case english = "en"
-        case french = "fr"
-        case spanish = "es"
-        case italian = "it"
-        case portuguese = "pt"
-
-        var displayName: String {
-            switch self {
-            case .english:    return "Englisch"
-            case .french:     return "Französisch"
-            case .spanish:    return "Spanisch"
-            case .italian:    return "Italienisch"
-            case .portuguese: return "Portugiesisch"
-            }
-        }
-    }
-
-    enum TranslateTone: String, Codable, CaseIterable {
-        case formal, neutral, casual
-    }
-}
-```
-
-### Zu ändernde Dateien
-- WorkflowProtocol.swift       → Neuer case .translate
-- LLMService.swift             → Neue translate()-Methode mit backend-Parameter
-- LocalLLMService.swift        → Neue translate()-Methode
-- AppState.swift               → translateSettings, startWorkflow, isWorkflowAvailable
-- SettingsContainer (privat)   → Neues translateSettings-Feld
-- MenuBarView.swift            → Neuer Button im Hauptmenü
-- SettingsContentView.swift    → Zielsprache-Picker in den Einstellungen
-
-### WorkflowType-Erweiterung (geplant)
-```swift
-case translate
-
-var displayName: String {
-    case .translate: return "Blitztext 🌍"
-}
-var icon: String {
-    case .translate: return "globe"
-}
-var subtitle: String {
-    case .translate: return "Deutsch rein. Englisch raus."
-}
-```
-
-### System-Prompt (Entwurf)
-```
-Du bist ein professioneller Übersetzer.
-Übersetze den folgenden deutschen Text ins [Zielsprache].
-- Verwende natürliches, idiomatisches [Zielsprache]
-- Behalte den Ton und Stil bei
-- Gib NUR die Übersetzung zurück, keine Erklärungen
-```
-
-### Empfohlenes Modell
-- Remote: gpt-4o-mini (günstig, ausreichend gut für Übersetzungen)
-- Lokal: Apple Intelligence (Basisqualität, für einfache Texte OK)
-
-### Kosten (geschätzt, 100 Wörter Deutsch → Englisch)
-- gpt-4o-mini: ~$0,00009 pro Aufruf (~0,008 Cent)
-- gpt-4o:      ~$0,0016  pro Aufruf (~0,15 Cent)
-- 1.000 Übersetzungen/Monat mit gpt-4o-mini: ~$0,09 (~8 Cent)
-
-### Hinweis Apple Intelligence
-- Für einfache, klare Sätze ausreichend
-- Bei Redewendungen/Idiomatik oft zu wörtlich
-- Safety Guardrails bei Übersetzungen unwahrscheinlich
+Weiterhin gültig aus der ursprünglichen Planung:
+- Empfohlenes Modell: Remote gpt-4o-mini (günstig, ausreichend gut), lokal
+  Apple Intelligence (Basisqualität, für einfache Texte OK; bei
+  Redewendungen/Idiomatik oft zu wörtlich).
+- Kosten (geschätzt, 100 Wörter Deutsch → Englisch): gpt-4o-mini ~$0,00009
+  pro Aufruf, gpt-4o ~$0,0016 pro Aufruf, 1.000 Übersetzungen/Monat mit
+  gpt-4o-mini ~$0,09.
 
 
 ---
