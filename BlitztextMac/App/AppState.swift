@@ -119,7 +119,7 @@ final class AppState {
     func workflowSubtitle(for type: WorkflowType) -> String {
         let base = baseWorkflowSubtitle(for: type)
         guard appSettings.translationEnabled else { return base }
-        let lang = translationStepSettings(for: type).targetLanguage.displayName
+        let lang = appSettings.translationTargetLanguage.displayName
         return "\(base) → \(lang)"
     }
 
@@ -255,6 +255,7 @@ final class AppState {
             workflow = TranslatingWorkflow(
                 inner: builtWorkflow,
                 settings: translationStepSettings(for: type),
+                targetLanguage: appSettings.translationTargetLanguage,
                 llmBackend: resolvedLLMBackend
             )
         } else {

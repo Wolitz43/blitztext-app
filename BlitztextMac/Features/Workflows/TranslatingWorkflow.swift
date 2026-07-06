@@ -6,6 +6,7 @@ import Observation
 final class TranslatingWorkflow: Workflow {
     private let inner: any Workflow
     private let settings: TranslationStepSettings
+    private let targetLanguage: TargetLanguage
     private let llmBackend: LLMBackend
     private var translationTask: Task<Void, Never>?
 
@@ -20,9 +21,15 @@ final class TranslatingWorkflow: Workflow {
     var isRecording: Bool { inner.isRecording }
     var audioLevel: Float { inner.audioLevel }
 
-    init(inner: any Workflow, settings: TranslationStepSettings, llmBackend: LLMBackend) {
+    init(
+        inner: any Workflow,
+        settings: TranslationStepSettings,
+        targetLanguage: TargetLanguage,
+        llmBackend: LLMBackend
+    ) {
         self.inner = inner
         self.settings = settings
+        self.targetLanguage = targetLanguage
         self.llmBackend = llmBackend
 
         inner.onPhaseChange = { [weak self] phase in
@@ -62,12 +69,16 @@ final class TranslatingWorkflow: Workflow {
     private func translate(_ originalText: String) {
         phase = .running("Wird übersetzt ...")
         let stepSettings = settings
+        let language = targetLanguage
         let backend = llmBackend
         let workflowType = type
 
         translationTask = Task {
             do {
-                let systemPrompt = Self.buildTranslationPrompt(settings: stepSettings)
+                let systemPrompt = Self.buildTranslationPrompt(
+                    settings: stepSettings,
+                    targetLanguage: language
+                )
                 let (translated, llmUsage) = try await LLMService.translate(
                     text: originalText,
                     systemPrompt: systemPrompt,
@@ -104,8 +115,11 @@ final class TranslatingWorkflow: Workflow {
         }
     }
 
-    private static func buildTranslationPrompt(settings: TranslationStepSettings) -> String {
-        let targetLang = settings.targetLanguage.englishName
+    private static func buildTranslationPrompt(
+        settings: TranslationStepSettings,
+        targetLanguage: TargetLanguage
+    ) -> String {
+        let targetLang = targetLanguage.englishName
 
         let toneInstruction: String
         switch settings.tone {
