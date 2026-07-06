@@ -185,7 +185,6 @@ enum TranscriptionBackend: String, Codable {
 // MARK: - Translation Step Settings (shared by all 4 workflows)
 
 struct TranslationStepSettings: Codable {
-    var targetLanguage: TargetLanguage = .english
     var tone: TranslateTone = .neutral
     var context: String = ""
 }
