@@ -127,6 +127,7 @@ struct AppSettings: Codable {
     var hasAutoSelectedFastLocalModel: Bool = false
     var translationEnabled: Bool = false
     var translationTargetLanguage: TargetLanguage = .english
+    var selectedMicrophoneID: String? = nil
 
     init(
         hotkeyMode: HotkeyMode = .hold,
@@ -135,7 +136,8 @@ struct AppSettings: Codable {
         selectedLocalTranscriptionModelName: String = LocalTranscriptionService.recommendedFastModelName,
         hasAutoSelectedFastLocalModel: Bool = false,
         translationEnabled: Bool = false,
-        translationTargetLanguage: TargetLanguage = .english
+        translationTargetLanguage: TargetLanguage = .english,
+        selectedMicrophoneID: String? = nil
     ) {
         self.hotkeyMode = hotkeyMode
         self.hasSeenOnboarding = hasSeenOnboarding
@@ -144,6 +146,7 @@ struct AppSettings: Codable {
         self.hasAutoSelectedFastLocalModel = hasAutoSelectedFastLocalModel
         self.translationEnabled = translationEnabled
         self.translationTargetLanguage = translationTargetLanguage
+        self.selectedMicrophoneID = selectedMicrophoneID
     }
 
     enum CodingKeys: String, CodingKey {
@@ -154,6 +157,7 @@ struct AppSettings: Codable {
         case hasAutoSelectedFastLocalModel
         case translationEnabled
         case translationTargetLanguage
+        case selectedMicrophoneID
     }
 
     init(from decoder: Decoder) throws {
@@ -174,6 +178,7 @@ struct AppSettings: Codable {
             TargetLanguage.self,
             forKey: .translationTargetLanguage
         ) ?? .english
+        selectedMicrophoneID = try container.decodeIfPresent(String.self, forKey: .selectedMicrophoneID)
     }
 }
 
@@ -250,8 +255,34 @@ enum TranslateTone: String, Codable, CaseIterable, Identifiable {
 
 // MARK: - Workflow Settings
 
+enum TranscriptionLanguage: String, Codable, CaseIterable, Identifiable {
+    case automatic = "auto"
+    case german    = "de"
+    case english   = "en"
+    case french    = "fr"
+    case spanish   = "es"
+    case italian   = "it"
+
+    var id: String { rawValue }
+
+    /// Whisper-Parameter: leer = Sprache automatisch erkennen
+    /// (beide Services lassen den Parameter bei leerem Wert weg).
+    var whisperCode: String { self == .automatic ? "" : rawValue }
+
+    var displayName: String {
+        switch self {
+        case .automatic: return "Automatisch"
+        case .german:    return "Deutsch"
+        case .english:   return "Englisch"
+        case .french:    return "Französisch"
+        case .spanish:   return "Spanisch"
+        case .italian:   return "Italienisch"
+        }
+    }
+}
+
 struct TranscriptionSettings: Codable {
-    var language: String = "de"
+    var language: TranscriptionLanguage = .automatic
     var translation: TranslationStepSettings = TranslationStepSettings()
 
     enum CodingKeys: String, CodingKey {
@@ -263,7 +294,7 @@ struct TranscriptionSettings: Codable {
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        language = try container.decodeIfPresent(String.self, forKey: .language) ?? "de"
+        language = (try? container.decodeIfPresent(TranscriptionLanguage.self, forKey: .language)) ?? .automatic
         translation = try container.decodeIfPresent(TranslationStepSettings.self, forKey: .translation) ?? TranslationStepSettings()
     }
 }

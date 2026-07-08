@@ -206,7 +206,7 @@ final class AppState {
         case .transcription:
             builtWorkflow = TranscriptionWorkflow(
                 customTerms: textImprovementSettings.customTerms,
-                language: transcriptionSettings.language,
+                language: transcriptionSettings.language.whisperCode,
                 backend: appSettings.secureLocalModeEnabled ? .local : .remote,
                 localModelName: selectedLocalModelName
             )
@@ -215,7 +215,7 @@ final class AppState {
             builtWorkflow = TranscriptionWorkflow(
                 type: .localTranscription,
                 customTerms: textImprovementSettings.customTerms,
-                language: transcriptionSettings.language,
+                language: transcriptionSettings.language.whisperCode,
                 backend: .local,
                 localModelName: selectedLocalModelName
             )
@@ -223,7 +223,7 @@ final class AppState {
         case .textImprover:
             builtWorkflow = TextImprovementWorkflow(
                 settings: textImprovementSettings,
-                language: transcriptionSettings.language,
+                language: transcriptionSettings.language.whisperCode,
                 llmBackend: resolvedLLMBackend,
                 transcriptionBackend: appSettings.secureLocalModeEnabled ? .local : .remote,
                 localModelName: selectedLocalModelName
@@ -233,7 +233,7 @@ final class AppState {
             builtWorkflow = DampfAblassenWorkflow(
                 settings: dampfAblassenSettings,
                 customTerms: textImprovementSettings.customTerms,
-                language: transcriptionSettings.language,
+                language: transcriptionSettings.language.whisperCode,
                 llmBackend: resolvedLLMBackend,
                 transcriptionBackend: appSettings.secureLocalModeEnabled ? .local : .remote,
                 localModelName: selectedLocalModelName
@@ -243,7 +243,7 @@ final class AppState {
             builtWorkflow = EmojiTextWorkflow(
                 settings: emojiTextSettings,
                 customTerms: textImprovementSettings.customTerms,
-                language: transcriptionSettings.language,
+                language: transcriptionSettings.language.whisperCode,
                 llmBackend: resolvedLLMBackend,
                 transcriptionBackend: appSettings.secureLocalModeEnabled ? .local : .remote,
                 localModelName: selectedLocalModelName
