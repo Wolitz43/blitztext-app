@@ -61,6 +61,23 @@ generate` oder ähnliche Projekt-Regenerierung ausgeführt wird.
 
 ---
 
+## ✅ Erledigt (08.07.2026)
+- Gesprochene Sprache einstellbar inkl. „Automatisch" (Whisper-Auto-Erkennung);
+  Settings → Anpassen → „Aufnahme". Bestehende Installationen bleiben auf
+  Deutsch, Neuinstallationen starten mit Automatisch.
+- Mikrofon-Auswahl in den Settings (System-Standard + angeschlossene Geräte,
+  stiller Fallback auf Standard wenn das Gerät fehlt). Aufnahme-Engine dafür
+  von AVAudioRecorder auf AVCaptureSession umgestellt.
+  Spec: `docs/superpowers/specs/2026-07-08-auto-language-microphone-selection-design.md`
+
+### Hinweise
+- Englischsprachige Lokal-Modelle (`*.en`) können nie auto-erkennen — sie
+  transkribieren immer englisch; kein Fehler, nur Verhalten.
+- Manuell noch zu prüfen (Mensch): Aufnahme über ein explizit gewähltes
+  Mikrofon; Auto-Erkennung mit je einem deutschen und englischen Satz;
+  Fallback nach Abziehen eines gewählten USB-Mikrofons; erste Silbe wird
+  nicht abgeschnitten (AVCaptureSession-Spin-up beim Aufnahmestart).
+
 ## ✅ Erledigt (06.07.2026)
 - Zielsprache der Übersetzung ist jetzt **global** (einmal für alle 4 Workflows,
   einstellbar in Settings „Anpassen" + Popover-Dropdown) statt pro Workflow;
@@ -326,7 +343,7 @@ C) Beides (empfohlen)
 | Feature | Apps die es haben | Aufwand |
 |---|---|---|
 | Automatische Interpunktion – Whisper gibt oft keinen Punkt am Satzende | SuperWhisper, MacWhisper | Leicht |
-| Sprache auto-erkennen – nicht manuell auf „de" festlegen | Alle | Leicht |
+| Sprache auto-erkennen – nicht manuell auf „de" festlegen | Alle | ✅ 08.07.2026 |
 | Mehrere Sprachen gleichzeitig – Code-Switching DE/EN | SuperWhisper Pro | Mittel |
 | Stille-Erkennung – Aufnahme stoppt automatisch nach X Sek. Pause | Wispr Flow, SuperWhisper | Mittel |
 
@@ -343,7 +360,7 @@ C) Beides (empfohlen)
 
 | Feature | Apps die es haben | Aufwand |
 |---|---|---|
-| Mikrofon wählen – nicht immer Standard-Mikrofon | MacWhisper, SuperWhisper | Leicht |
+| Mikrofon wählen – nicht immer Standard-Mikrofon | MacWhisper, SuperWhisper | ✅ 08.07.2026 |
 | Audio-Datei importieren – .mp3/.m4a transkribieren | MacWhisper | Mittel |
 | Rauschunterdrückung – vor dem Senden an Whisper | SuperWhisper Pro | Groß |
 | Live-Transkription – Text erscheint während man spricht | Wispr Flow | Groß |
@@ -381,11 +398,11 @@ C) Beides (empfohlen)
 
 | Prio | Feature | Warum |
 |---|---|---|
-| 1 | 🎤 Mikrofon-Auswahl | Leicht, sehr häufig nachgefragt |
+| 1 | ✅ 🎤 Mikrofon-Auswahl | Leicht, sehr häufig nachgefragt |
 | 2 | ⏱️ Stille-Erkennung | Kein manuelles Stoppen mehr nötig, großer UX-Gewinn |
 | 3 | 📋 Transkriptions-Verlauf | Alle bisherigen Texte durchsuchbar |
 | 4 | ✏️ Markierten Text verbessern | Killer-Feature, das Wispr Flow groß gemacht hat |
-| 5 | 🌐 Sprache auto-erkennen | `language=auto` statt fix auf Deutsch, ein Einzeiler |
+| 5 | ✅ 🌐 Sprache auto-erkennen | `language=auto` statt fix auf Deutsch, ein Einzeiler |
 
 ---
 
