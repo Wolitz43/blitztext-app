@@ -77,6 +77,9 @@ generate` oder ähnliche Projekt-Regenerierung ausgeführt wird.
   Mikrofon; Auto-Erkennung mit je einem deutschen und englischen Satz;
   Fallback nach Abziehen eines gewählten USB-Mikrofons; erste Silbe wird
   nicht abgeschnitten (AVCaptureSession-Spin-up beim Aufnahmestart).
+- Downgrade auf einen Build vor dem 08.07.2026 bei gespeichertem
+  `"language": "auto"`: „auto" wird dann als wörtlicher Sprachcode an die
+  APIs gesendet (Whisper lehnt das ab bzw. verhält sich falsch).
 
 ## ✅ Erledigt (06.07.2026)
 - Zielsprache der Übersetzung ist jetzt **global** (einmal für alle 4 Workflows,
