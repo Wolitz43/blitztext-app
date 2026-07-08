@@ -16,6 +16,7 @@ final class TextImprovementWorkflow: Workflow {
     private let recorder = AudioRecorder()
     private let settings: TextImprovementSettings
     private let language: String
+    private let microphoneID: String?
     private let llmBackend: LLMBackend
     private let transcriptionBackend: TranscriptionBackend
     private let localModelName: String
@@ -24,12 +25,14 @@ final class TextImprovementWorkflow: Workflow {
     init(
         settings: TextImprovementSettings,
         language: String = "de",
+        microphoneID: String? = nil,
         llmBackend: LLMBackend = .remote,
         transcriptionBackend: TranscriptionBackend = .remote,
         localModelName: String = LocalTranscriptionService.recommendedFastModelName
     ) {
         self.settings = settings
         self.language = language
+        self.microphoneID = microphoneID
         self.llmBackend = llmBackend
         self.transcriptionBackend = transcriptionBackend
         self.localModelName = localModelName
@@ -44,7 +47,7 @@ final class TextImprovementWorkflow: Workflow {
 
     func start() {
         phase = .running("Aufnahme läuft ...")
-        recorder.startRecording()
+        recorder.startRecording(preferredDeviceID: microphoneID)
 
         if let error = recorder.errorMessage {
             phase = .error(error)

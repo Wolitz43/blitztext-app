@@ -17,6 +17,7 @@ final class DampfAblassenWorkflow: Workflow {
     private let settings: DampfAblassenSettings
     private let customTerms: [String]
     private let language: String
+    private let microphoneID: String?
     private let llmBackend: LLMBackend
     private let transcriptionBackend: TranscriptionBackend
     private let localModelName: String
@@ -26,6 +27,7 @@ final class DampfAblassenWorkflow: Workflow {
         settings: DampfAblassenSettings,
         customTerms: [String] = [],
         language: String = "de",
+        microphoneID: String? = nil,
         llmBackend: LLMBackend = .remote,
         transcriptionBackend: TranscriptionBackend = .remote,
         localModelName: String = LocalTranscriptionService.recommendedFastModelName
@@ -33,6 +35,7 @@ final class DampfAblassenWorkflow: Workflow {
         self.settings = settings
         self.customTerms = customTerms
         self.language = language
+        self.microphoneID = microphoneID
         self.llmBackend = llmBackend
         self.transcriptionBackend = transcriptionBackend
         self.localModelName = localModelName
@@ -47,7 +50,7 @@ final class DampfAblassenWorkflow: Workflow {
 
     func start() {
         phase = .running("Aufnahme läuft ...")
-        recorder.startRecording()
+        recorder.startRecording(preferredDeviceID: microphoneID)
 
         if let error = recorder.errorMessage {
             phase = .error(error)

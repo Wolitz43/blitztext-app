@@ -23,6 +23,7 @@ final class TranscriptionWorkflow: Workflow {
     private let recorder = AudioRecorder()
     private let customTerms: [String]
     private let language: String
+    private let microphoneID: String?
     private let backend: TranscriptionBackend
     private let localModelName: String
     private var transcriptionTask: Task<Void, Never>?
@@ -31,19 +32,21 @@ final class TranscriptionWorkflow: Workflow {
         type: WorkflowType = .transcription,
         customTerms: [String] = [],
         language: String = "de",
+        microphoneID: String? = nil,
         backend: TranscriptionBackend = .remote,
         localModelName: String = LocalTranscriptionService.recommendedFastModelName
     ) {
         self.type = type
         self.customTerms = customTerms
         self.language = language
+        self.microphoneID = microphoneID
         self.backend = backend
         self.localModelName = localModelName
     }
 
     func start() {
         phase = .running("Aufnahme läuft ...")
-        recorder.startRecording()
+        recorder.startRecording(preferredDeviceID: microphoneID)
 
         if let error = recorder.errorMessage {
             phase = .error(error)

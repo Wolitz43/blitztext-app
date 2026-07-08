@@ -207,6 +207,7 @@ final class AppState {
             builtWorkflow = TranscriptionWorkflow(
                 customTerms: textImprovementSettings.customTerms,
                 language: transcriptionSettings.language.whisperCode,
+                microphoneID: appSettings.selectedMicrophoneID,
                 backend: appSettings.secureLocalModeEnabled ? .local : .remote,
                 localModelName: selectedLocalModelName
             )
@@ -216,6 +217,7 @@ final class AppState {
                 type: .localTranscription,
                 customTerms: textImprovementSettings.customTerms,
                 language: transcriptionSettings.language.whisperCode,
+                microphoneID: appSettings.selectedMicrophoneID,
                 backend: .local,
                 localModelName: selectedLocalModelName
             )
@@ -224,6 +226,7 @@ final class AppState {
             builtWorkflow = TextImprovementWorkflow(
                 settings: textImprovementSettings,
                 language: transcriptionSettings.language.whisperCode,
+                microphoneID: appSettings.selectedMicrophoneID,
                 llmBackend: resolvedLLMBackend,
                 transcriptionBackend: appSettings.secureLocalModeEnabled ? .local : .remote,
                 localModelName: selectedLocalModelName
@@ -234,6 +237,7 @@ final class AppState {
                 settings: dampfAblassenSettings,
                 customTerms: textImprovementSettings.customTerms,
                 language: transcriptionSettings.language.whisperCode,
+                microphoneID: appSettings.selectedMicrophoneID,
                 llmBackend: resolvedLLMBackend,
                 transcriptionBackend: appSettings.secureLocalModeEnabled ? .local : .remote,
                 localModelName: selectedLocalModelName
@@ -244,6 +248,7 @@ final class AppState {
                 settings: emojiTextSettings,
                 customTerms: textImprovementSettings.customTerms,
                 language: transcriptionSettings.language.whisperCode,
+                microphoneID: appSettings.selectedMicrophoneID,
                 llmBackend: resolvedLLMBackend,
                 transcriptionBackend: appSettings.secureLocalModeEnabled ? .local : .remote,
                 localModelName: selectedLocalModelName
