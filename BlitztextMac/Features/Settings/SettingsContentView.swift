@@ -554,6 +554,7 @@ struct AccessSettingsView: View {
 struct CustomizeSettingsView: View {
     @Bindable var appState: AppState
     @State private var newTerm = ""
+    @State private var availableMicrophones: [MicrophoneDevice] = []
 
     private var installedLocalModels: [LocalTranscriptionModel] {
         LocalTranscriptionService.installedModels()
@@ -664,6 +665,59 @@ struct CustomizeSettingsView: View {
                         }
                     }
                     .pickerStyle(.segmented)
+                }
+            }
+
+            // MARK: Aufnahme
+            VStack(alignment: .leading, spacing: 10) {
+                SectionLabel(text: "Aufnahme")
+
+                // Gesprochene Sprache
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Gesprochene Sprache")
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+
+                    Picker("", selection: $appState.transcriptionSettings.language) {
+                        ForEach(TranscriptionLanguage.allCases) { lang in
+                            Text(lang.displayName).tag(lang)
+                        }
+                    }
+                    .labelsHidden()
+                    .pickerStyle(.menu)
+
+                    Text("Automatisch erkennt die gesprochene Sprache; bei sehr kurzen Äußerungen ist eine feste Sprache zuverlässiger.")
+                        .font(.system(size: 10.5))
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                // Mikrofon
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Mikrofon")
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+
+                    Picker("", selection: $appState.appSettings.selectedMicrophoneID) {
+                        Text("System-Standard").tag(String?.none)
+                        ForEach(availableMicrophones) { mic in
+                            Text(mic.name).tag(String?.some(mic.id))
+                        }
+                        if let selectedID = appState.appSettings.selectedMicrophoneID,
+                           !availableMicrophones.contains(where: { $0.id == selectedID }) {
+                            Text("Nicht verbunden").tag(String?.some(selectedID))
+                        }
+                    }
+                    .labelsHidden()
+                    .pickerStyle(.menu)
+                    .onAppear {
+                        availableMicrophones = AudioRecorder.availableMicrophones()
+                    }
+
+                    Text("Ist das gewählte Mikrofon nicht angeschlossen, wird automatisch der System-Standard verwendet.")
+                        .font(.system(size: 10.5))
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
             }
 
